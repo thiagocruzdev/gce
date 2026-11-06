@@ -1,0 +1,177 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Pessoa {
+  id            Int          @id @default(autoincrement())
+  nome          String
+  cpf           String       @unique
+  telefone      String?
+  email         String?
+  dt_nascimento DateTime?
+  created_at    DateTime     @default(now())
+  updated_at    DateTime     @updatedAt
+  cliente       Cliente?
+  colaborador   Colaborador?
+}
+
+model Cliente {
+  id_pessoa             Int          @id
+  pref_horario          String?
+  pref_servico          Int?
+  pref_colaborador      Int?
+  pessoa                Pessoa       @relation(fields: [id_pessoa], references: [id], onDelete: Cascade)
+  servico_preferido     Servico?     @relation("ClientePrefServico", fields: [pref_servico], references: [id])
+  colaborador_preferido Colaborador? @relation("ClientePrefColaborador", fields: [pref_colaborador], references: [id_pessoa])
+  agendamentos          Agendamento[]
+  vendas                Venda[]
+}
+
+model Colaborador {
+  id_pessoa           Int                          @id
+  especializacao      String?
+  salario             Float?
+  data_admissao       DateTime?
+  status              String                       @default("Ativo")
+  pessoa              Pessoa                       @relation(fields: [id_pessoa], references: [id], onDelete: Cascade)
+  disponibilidades    ColaboradorDisponibilidade[]
+  agendamentos        Agendamento[]
+  vendas              Venda[]
+  venda_itens         VendaItem[]
+  clientes_preferiram Cliente[]                    @relation("ClientePrefColaborador")
+}
+
+model ColaboradorDisponibilidade {
+  id             Int         @id @default(autoincrement())
+  id_colaborador Int
+  dia_semana     Int
+  hora_inicio    String
+  hora_fim       String
+  colaborador    Colaborador @relation(fields: [id_colaborador], references: [id_pessoa], onDelete: Cascade)
+}
+
+model Servico {
+  id                  Int              @id @default(autoincrement())
+  nome                String
+  descricao           String?
+  valor               Float
+  duracao_minutos     Int?
+  status              Boolean          @default(true)
+  produtos            ServicoProduto[]
+  agendamentos        Agendamento[]
+  venda_itens         VendaItem[]
+  clientes_preferiram Cliente[]        @relation("ClientePrefServico")
+}
+
+model ServicoProduto {
+  id         Int     @id @default(autoincrement())
+  id_servico Int
+  id_produto Int
+  quantidade Float
+  servico    Servico @relation(fields: [id_servico], references: [id], onDelete: Cascade)
+  produto    Produto @relation(fields: [id_produto], references: [id], onDelete: Cascade)
+}
+
+model Produto {
+  id                    Int                   @id @default(autoincrement())
+  nome                  String
+  descricao             String?
+  valor_custo           Float?
+  valor_venda           Float
+  qntd                  Float                 @default(0)
+  qntd_min              Float                 @default(0)
+  status                Boolean               @default(true)
+  servico_produtos      ServicoProduto[]
+  venda_itens           VendaItem[]
+  estoque_movimentacoes EstoqueMovimentacao[]
+}
+
+model Agendamento {
+  id             Int         @id @default(autoincrement())
+  id_cliente     Int
+  id_colaborador Int
+  id_servico     Int
+  data_efetuado  DateTime    @default(now())
+  data_marcada   DateTime
+  hora_inicio    String?
+  hora_fim       String?
+  valor_previsto Float?
+  status         String      @default("Pendente")
+  observacao     String?
+  cliente        Cliente     @relation(fields: [id_cliente], references: [id_pessoa])
+  colaborador    Colaborador @relation(fields: [id_colaborador], references: [id_pessoa])
+  servico        Servico     @relation(fields: [id_servico], references: [id])
+  vendas         Venda[]
+}
+
+model Venda {
+  id             Int              @id @default(autoincrement())
+  id_cliente     Int
+  id_agendamento Int?
+  id_colaborador Int
+  valor_total    Float            @default(0)
+  valor_desconto Float            @default(0)
+  valor_final    Float            @default(0)
+  data           DateTime         @default(now())
+  status         String           @default("Pendente")
+  cliente        Cliente          @relation(fields: [id_cliente], references: [id_pessoa])
+  agendamento    Agendamento?     @relation(fields: [id_agendamento], references: [id])
+  colaborador    Colaborador      @relation(fields: [id_colaborador], references: [id_pessoa])
+  itens          VendaItem[]
+  pagamentos     VendaPagamento[]
+  pos_venda      PosVenda?
+}
+
+model VendaItem {
+  id                    Int                   @id @default(autoincrement())
+  id_venda              Int
+  tipo                  String
+  id_produto            Int?
+  id_servico            Int?
+  id_colaborador        Int?
+  quantidade            Float                 @default(1)
+  valor_unitario        Float
+  valor_desconto        Float                 @default(0)
+  valor_total           Float
+  venda                 Venda                 @relation(fields: [id_venda], references: [id], onDelete: Cascade)
+  produto               Produto?              @relation(fields: [id_produto], references: [id])
+  servico               Servico?              @relation(fields: [id_servico], references: [id])
+  colaborador           Colaborador?          @relation(fields: [id_colaborador], references: [id_pessoa])
+  estoque_movimentacoes EstoqueMovimentacao[]
+}
+
+model VendaPagamento {
+  id              Int      @id @default(autoincrement())
+  id_venda        Int
+  forma_pagamento String
+  valor           Float
+  data_pagamento  DateTime @default(now())
+  status          String   @default("Pago")
+  venda           Venda    @relation(fields: [id_venda], references: [id], onDelete: Cascade)
+}
+
+model EstoqueMovimentacao {
+  id            Int        @id @default(autoincrement())
+  id_produto    Int
+  id_venda_item Int?
+  tipo          String
+  quantidade    Float
+  motivo        String?
+  data          DateTime   @default(now())
+  produto       Produto    @relation(fields: [id_produto], references: [id])
+  venda_item    VendaItem? @relation(fields: [id_venda_item], references: [id])
+}
+
+model PosVenda {
+  id         Int      @id @default(autoincrement())
+  id_venda   Int      @unique
+  avaliacao  Int
+  comentario String?
+  data       DateTime @default(now())
+  venda      Venda    @relation(fields: [id_venda], references: [id], onDelete: Cascade)
+}
