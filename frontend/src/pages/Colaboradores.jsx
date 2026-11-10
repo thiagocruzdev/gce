@@ -18,7 +18,7 @@ export default function Colaboradores({ setMensagem }) {
   async function carregarColaboradores() {
     try {
       const dados = await getColaboradores();
-      setColaboradores(dados);
+      setColaboradores(dados || []);
     } catch (erro) {
       console.log('Erro ao carregar colaboradores:', erro);
     }
@@ -56,9 +56,7 @@ export default function Colaboradores({ setMensagem }) {
   }
 
   async function remover(id) {
-    const confirmou = window.confirm('Deseja excluir este colaborador?');
-    if (!confirmou) return;
-
+    if (!window.confirm('Deseja excluir este colaborador?')) return;
     try {
       await excluirColaborador(id);
       if (setMensagem) setMensagem('Colaborador excluído com sucesso!');
@@ -70,10 +68,14 @@ export default function Colaboradores({ setMensagem }) {
 
   return (
     <div>
-      <div className="topo-pagina">
-        <h2>Equipe e Funcionários</h2>
+      <div className="page-header">
+        <div className="page-header-text">
+          <h2>Equipe &amp; Colaboradores</h2>
+          <p>Cadastro de profissionais e corpo clínico</p>
+        </div>
+
         <button
-          className="btn btn-principal"
+          className="btn btn-primary"
           onClick={() => setMostrarForm(!mostrarForm)}
         >
           {mostrarForm ? 'Cancelar' : '+ Novo Colaborador'}
@@ -81,12 +83,12 @@ export default function Colaboradores({ setMensagem }) {
       </div>
 
       {mostrarForm && (
-        <div className="formulario-card">
-          <h3>Preencha os dados do profissional</h3>
+        <div className="form-card">
+          <h3 className="form-title">Cadastrar Novo Profissional</h3>
           <form onSubmit={cadastrar}>
-            <div className="linha-campos">
-              <div className="campo">
-                <label>Nome do profissional *</label>
+            <div className="form-grid-2">
+              <div className="form-group">
+                <label>Nome do Profissional *</label>
                 <input
                   type="text"
                   value={nome}
@@ -95,7 +97,8 @@ export default function Colaboradores({ setMensagem }) {
                   required
                 />
               </div>
-              <div className="campo">
+
+              <div className="form-group">
                 <label>CPF *</label>
                 <input
                   type="text"
@@ -107,8 +110,8 @@ export default function Colaboradores({ setMensagem }) {
               </div>
             </div>
 
-            <div className="linha-campos">
-              <div className="campo">
+            <div className="form-grid-2">
+              <div className="form-group">
                 <label>Telefone</label>
                 <input
                   type="text"
@@ -117,7 +120,8 @@ export default function Colaboradores({ setMensagem }) {
                   placeholder="(00) 00000-0000"
                 />
               </div>
-              <div className="campo">
+
+              <div className="form-group">
                 <label>Especialização</label>
                 <input
                   type="text"
@@ -128,7 +132,7 @@ export default function Colaboradores({ setMensagem }) {
               </div>
             </div>
 
-            <div className="campo">
+            <div className="form-group">
               <label>Salário (R$)</label>
               <input
                 type="number"
@@ -139,53 +143,71 @@ export default function Colaboradores({ setMensagem }) {
               />
             </div>
 
-            <button type="submit" className="btn btn-principal">
-              Salvar Profissional
-            </button>
+            <div className="form-actions">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setMostrarForm(false)}
+              >
+                Cancelar
+              </button>
+              <button type="submit" className="btn btn-primary">
+                Salvar Profissional
+              </button>
+            </div>
           </form>
         </div>
       )}
 
-      <div className="tabela-container">
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Nome</th>
-              <th>Especialização</th>
-              <th>Telefone</th>
-              <th>Salário</th>
-              <th>Status</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {colaboradores.length === 0 ? (
+      <div className="table-card">
+        <div className="table-header-box">
+          <h3>Profissionais Cadastrados ({colaboradores.length})</h3>
+        </div>
+        <div className="table-container">
+          <table>
+            <thead>
               <tr>
-                <td colSpan="7">Nenhum colaborador encontrado.</td>
+                <th>ID</th>
+                <th>Nome</th>
+                <th>Especialização</th>
+                <th>Telefone</th>
+                <th>Salário</th>
+                <th>Status</th>
+                <th>Ações</th>
               </tr>
-            ) : (
-              colaboradores.map((colab) => (
-                <tr key={colab.id_pessoa}>
-                  <td>{colab.id_pessoa}</td>
-                  <td>{colab.pessoa?.nome}</td>
-                  <td>{colab.especializacao || '-'}</td>
-                  <td>{colab.pessoa?.telefone || '-'}</td>
-                  <td>{colab.salario ? 'R$ ' + Number(colab.salario).toFixed(2) : '-'}</td>
-                  <td>{colab.status || 'Ativo'}</td>
-                  <td>
-                    <button
-                      className="btn btn-excluir"
-                      onClick={() => remover(colab.id_pessoa)}
-                    >
-                      Excluir
-                    </button>
-                  </td>
+            </thead>
+            <tbody>
+              {colaboradores.length === 0 ? (
+                <tr>
+                  <td colSpan="7" className="table-empty">Nenhum colaborador encontrado.</td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                colaboradores.map((colab) => (
+                  <tr key={colab.id_pessoa}>
+                    <td>{colab.id_pessoa}</td>
+                    <td><strong>{colab.pessoa?.nome}</strong></td>
+                    <td>{colab.especializacao || '-'}</td>
+                    <td>{colab.pessoa?.telefone || '-'}</td>
+                    <td>{colab.salario ? 'R$ ' + Number(colab.salario).toFixed(2) : '-'}</td>
+                    <td>
+                      <span className="badge badge-ativo">
+                        {colab.status || 'Ativo'}
+                      </span>
+                    </td>
+                    <td>
+                      <button
+                        className="btn btn-danger btn-sm"
+                        onClick={() => remover(colab.id_pessoa)}
+                      >
+                        Excluir
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

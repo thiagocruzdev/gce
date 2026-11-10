@@ -1,5 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { getVendas, getClientes, getColaboradores, getServicos, getProdutos, criarVenda, adicionarItemVenda, adicionarPagamentoVenda, excluirVenda } from '../services/api';
+import {
+  getVendas,
+  getClientes,
+  getColaboradores,
+  getServicos,
+  getProdutos,
+  criarVenda,
+  adicionarItemVenda,
+  adicionarPagamentoVenda,
+  excluirVenda
+} from '../services/api';
 
 export default function Vendas({ setMensagem }) {
   const [vendas, setVendas] = useState([]);
@@ -22,17 +32,19 @@ export default function Vendas({ setMensagem }) {
 
   async function carregarTudo() {
     try {
-      const listaVendas = await getVendas();
-      const listaClientes = await getClientes();
-      const listaColab = await getColaboradores();
-      const listaServicos = await getServicos();
-      const listaProdutos = await getProdutos();
+      const [listaVendas, listaClientes, listaColab, listaServicos, listaProdutos] = await Promise.all([
+        getVendas().catch(() => []),
+        getClientes().catch(() => []),
+        getColaboradores().catch(() => []),
+        getServicos().catch(() => []),
+        getProdutos().catch(() => [])
+      ]);
 
-      setVendas(listaVendas);
-      setClientes(listaClientes);
-      setColaboradores(listaColab);
-      setServicos(listaServicos);
-      setProdutos(listaProdutos);
+      setVendas(listaVendas || []);
+      setClientes(listaClientes || []);
+      setColaboradores(listaColab || []);
+      setServicos(listaServicos || []);
+      setProdutos(listaProdutos || []);
     } catch (erro) {
       console.log('Erro ao carregar vendas:', erro);
     }
@@ -42,7 +54,7 @@ export default function Vendas({ setMensagem }) {
     e.preventDefault();
 
     if (!idCliente || !idColaborador || !itemId) {
-      alert('Selecione o cliente, colaborador e o item vendido!');
+      alert('Selecione cliente, profissional e o item vendido!');
       return;
     }
 
@@ -56,15 +68,15 @@ export default function Vendas({ setMensagem }) {
     }
 
     const qtd = parseFloat(quantidade) || 1;
-    const totalVenda = qtd * valorUnitario;
+    const total = qtd * valorUnitario;
 
     try {
       const novaVenda = await criarVenda({
         id_cliente: parseInt(idCliente),
         id_colaborador: parseInt(idColaborador),
-        valor_total: totalVenda,
+        valor_total: total,
         valor_desconto: 0,
-        valor_final: totalVenda,
+        valor_final: total,
         status: 'Pago'
       });
 
@@ -79,7 +91,7 @@ export default function Vendas({ setMensagem }) {
 
       await adicionarPagamentoVenda(novaVenda.id, {
         forma_pagamento: formaPagamento,
-        valor: totalVenda,
+        valor: total,
         status: 'Pago'
       });
 
@@ -97,9 +109,7 @@ export default function Vendas({ setMensagem }) {
   }
 
   async function remover(id) {
-    const confirmou = window.confirm('Deseja excluir esta venda?');
-    if (!confirmou) return;
-
+    if (!window.confirm('Deseja excluir esta venda?')) return;
     try {
       await excluirVenda(id);
       if (setMensagem) setMensagem('Venda excluída!');
@@ -109,24 +119,56 @@ export default function Vendas({ setMensagem }) {
     }
   }
 
+  const totalFaturamento = vendas.reduce((acc, v) => acc + (v.valor_final || 0), 0);
+  const ticketMedio = vendas.length > 0 ? totalFaturamento / vendas.length : 0;
+
   return (
     <div>
-      <div className="topo-pagina">
-        <h2>Registro de Vendas e Caixa</h2>
+      <div className="page-header">
+        <div className="page-header-text">
+          <h2>Vendas &amp; Faturamento</h2>
+          <p>Lançamentos financeiros de procedimentos e produtos vendidos</p>
+        </div>
+
         <button
-          className="btn btn-principal"
+          className="btn btn-primary"
           onClick={() => setMostrarForm(!mostrarForm)}
         >
           {mostrarForm ? 'Cancelar' : '+ Nova Venda'}
         </button>
       </div>
 
+      {/* Cards de Métricas */}
+      <div className="metric-cards-grid">
+        <div className="metric-card">
+          <div className="metric-card-label">Total Faturado</div>
+          <div className="metric-card-value">
+            R$ {Number(totalFaturamento).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+          </div>
+          <div className="metric-card-sub">Receita bruta de vendas</div>
+        </div>
+
+        <div className="metric-card">
+          <div className="metric-card-label">Total de Vendas</div>
+          <div className="metric-card-value">{vendas.length}</div>
+          <div className="metric-card-sub">Lançamentos efetuados</div>
+        </div>
+
+        <div className="metric-card">
+          <div className="metric-card-label">Ticket Médio</div>
+          <div className="metric-card-value">
+            R$ {Number(ticketMedio).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+          </div>
+          <div className="metric-card-sub">Média por atendimento</div>
+        </div>
+      </div>
+
       {mostrarForm && (
-        <div className="formulario-card">
-          <h3>Preencha os dados da venda</h3>
+        <div className="form-card">
+          <h3 className="form-title">Registrar Nova Venda</h3>
           <form onSubmit={cadastrarVenda}>
-            <div className="linha-campos">
-              <div className="campo">
+            <div className="form-grid-2">
+              <div className="form-group">
                 <label>Cliente *</label>
                 <select
                   value={idCliente}
@@ -142,8 +184,8 @@ export default function Vendas({ setMensagem }) {
                 </select>
               </div>
 
-              <div className="campo">
-                <label>Profissional que Atendeu *</label>
+              <div className="form-group">
+                <label>Profissional / Atendente *</label>
                 <select
                   value={idColaborador}
                   onChange={(e) => setIdColaborador(e.target.value)}
@@ -159,8 +201,8 @@ export default function Vendas({ setMensagem }) {
               </div>
             </div>
 
-            <div className="linha-campos">
-              <div className="campo">
+            <div className="form-grid-2">
+              <div className="form-group">
                 <label>Tipo de Item</label>
                 <select
                   value={tipoItem}
@@ -170,35 +212,35 @@ export default function Vendas({ setMensagem }) {
                   }}
                 >
                   <option value="SERVICO">Serviço / Procedimento</option>
-                  <option value="PRODUTO">Produto / Cosmético</option>
+                  <option value="PRODUTO">Produto Cosmético</option>
                 </select>
               </div>
 
-              <div className="campo">
-                <label>Item *</label>
+              <div className="form-group">
+                <label>Item Vendido *</label>
                 <select
                   value={itemId}
                   onChange={(e) => setItemId(e.target.value)}
                   required
                 >
-                  <option value="">Selecione o item...</option>
-                  {tipoItem === 'SERVICO' ? (
-                    servicos.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.nome} - R$ {s.valor}
-                      </option>
-                    ))
-                  ) : (
-                    produtos.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.nome} - R$ {p.valor_venda} (Estoque: {p.qntd})
-                      </option>
-                    ))
-                  )}
+                  <option value="">Selecione...</option>
+                  {tipoItem === 'SERVICO'
+                    ? servicos.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.nome} (R$ {Number(s.valor || 0).toFixed(2)})
+                        </option>
+                      ))
+                    : produtos.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.nome} (R$ {Number(p.valor_venda || 0).toFixed(2)})
+                        </option>
+                      ))}
                 </select>
               </div>
+            </div>
 
-              <div className="campo">
+            <div className="form-grid-2">
+              <div className="form-group">
                 <label>Quantidade</label>
                 <input
                   type="number"
@@ -208,70 +250,86 @@ export default function Vendas({ setMensagem }) {
                   required
                 />
               </div>
+
+              <div className="form-group">
+                <label>Forma de Pagamento</label>
+                <select
+                  value={formaPagamento}
+                  onChange={(e) => setFormaPagamento(e.target.value)}
+                >
+                  <option value="PIX">PIX</option>
+                  <option value="Cartão de Crédito">Cartão de Crédito</option>
+                  <option value="Cartão de Débito">Cartão de Débito</option>
+                  <option value="Dinheiro">Dinheiro</option>
+                </select>
+              </div>
             </div>
 
-            <div className="campo">
-              <label>Forma de Pagamento</label>
-              <select
-                value={formaPagamento}
-                onChange={(e) => setFormaPagamento(e.target.value)}
+            <div className="form-actions">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setMostrarForm(false)}
               >
-                <option value="PIX">PIX</option>
-                <option value="Cartão de Crédito">Cartão de Crédito</option>
-                <option value="Cartão de Débito">Cartão de Débito</option>
-                <option value="Dinheiro">Dinheiro</option>
-              </select>
+                Cancelar
+              </button>
+              <button type="submit" className="btn btn-primary">
+                Salvar Venda
+              </button>
             </div>
-
-            <button type="submit" className="btn btn-principal">
-              Finalizar Venda
-            </button>
           </form>
         </div>
       )}
 
-      <div className="tabela-container">
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Data</th>
-              <th>Cliente</th>
-              <th>Profissional</th>
-              <th>Valor Total</th>
-              <th>Status</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {vendas.length === 0 ? (
+      <div className="table-card">
+        <div className="table-header-box">
+          <h3>Histórico de Vendas ({vendas.length})</h3>
+        </div>
+        <div className="table-container">
+          <table>
+            <thead>
               <tr>
-                <td colSpan="7">Nenhuma venda registrada ainda.</td>
+                <th>ID</th>
+                <th>Data</th>
+                <th>Cliente</th>
+                <th>Profissional</th>
+                <th>Valor Total</th>
+                <th>Status</th>
+                <th>Ações</th>
               </tr>
-            ) : (
-              vendas.map((v) => (
-                <tr key={v.id}>
-                  <td>#{v.id}</td>
-                  <td>{new Date(v.data).toLocaleDateString('pt-BR')}</td>
-                  <td>{v.cliente?.pessoa?.nome || 'Cliente'}</td>
-                  <td>{v.colaborador?.pessoa?.nome || 'Colaborador'}</td>
-                  <td><strong>R$ {v.valor_final ? Number(v.valor_final).toFixed(2) : '0.00'}</strong></td>
-                  <td>
-                    <span className="badge badge-concluido">{v.status}</span>
-                  </td>
-                  <td>
-                    <button
-                      className="btn btn-excluir"
-                      onClick={() => remover(v.id)}
-                    >
-                      Excluir
-                    </button>
-                  </td>
+            </thead>
+            <tbody>
+              {vendas.length === 0 ? (
+                <tr>
+                  <td colSpan="7" className="table-empty">Nenhuma venda registrada ainda.</td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                vendas.map((v) => (
+                  <tr key={v.id}>
+                    <td>#{v.id}</td>
+                    <td>{v.data ? new Date(v.data).toLocaleDateString('pt-BR') : '-'}</td>
+                    <td><strong>{v.cliente?.pessoa?.nome || 'Cliente'}</strong></td>
+                    <td>{v.colaborador?.pessoa?.nome || 'Profissional'}</td>
+                    <td><strong>R$ {Number(v.valor_final || 0).toFixed(2)}</strong></td>
+                    <td>
+                      <span className="badge badge-pago">
+                        {v.status || 'Pago'}
+                      </span>
+                    </td>
+                    <td>
+                      <button
+                        className="btn btn-danger btn-sm"
+                        onClick={() => remover(v.id)}
+                      >
+                        Excluir
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

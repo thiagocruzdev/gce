@@ -16,10 +16,12 @@ export default function PosVenda({ setMensagem }) {
 
   async function carregarDados() {
     try {
-      const listaAval = await getPosVendas();
-      const listaVendas = await getVendas();
-      setAvaliacoes(listaAval);
-      setVendas(listaVendas);
+      const [listaAval, listaVendas] = await Promise.all([
+        getPosVendas().catch(() => []),
+        getVendas().catch(() => [])
+      ]);
+      setAvaliacoes(listaAval || []);
+      setVendas(listaVendas || []);
     } catch (erro) {
       console.log('Erro ao carregar pós-venda:', erro);
     }
@@ -37,7 +39,7 @@ export default function PosVenda({ setMensagem }) {
       await criarPosVenda({
         id_venda: parseInt(idVenda),
         avaliacao: parseInt(nota),
-        comentario: comentario
+        comentario: comentario.trim()
       });
 
       setIdVenda('');
@@ -53,9 +55,7 @@ export default function PosVenda({ setMensagem }) {
   }
 
   async function remover(id) {
-    const confirmou = window.confirm('Deseja excluir esta avaliação?');
-    if (!confirmou) return;
-
+    if (!window.confirm('Deseja excluir esta avaliação?')) return;
     try {
       await excluirPosVenda(id);
       if (setMensagem) setMensagem('Avaliação excluída!');
@@ -67,10 +67,14 @@ export default function PosVenda({ setMensagem }) {
 
   return (
     <div>
-      <div className="topo-pagina">
-        <h2>Pós-Venda e Avaliação de Clientes</h2>
+      <div className="page-header">
+        <div className="page-header-text">
+          <h2>Pós-Venda &amp; Avaliações</h2>
+          <p>Feedback das clientes, satisfação e controle de qualidade</p>
+        </div>
+
         <button
-          className="btn btn-principal"
+          className="btn btn-primary"
           onClick={() => setMostrarForm(!mostrarForm)}
         >
           {mostrarForm ? 'Cancelar' : '+ Nova Avaliação'}
@@ -78,11 +82,11 @@ export default function PosVenda({ setMensagem }) {
       </div>
 
       {mostrarForm && (
-        <div className="formulario-card">
-          <h3>Registrar Feedback do Cliente</h3>
+        <div className="form-card">
+          <h3 className="form-title">Registrar Feedback de Atendimento</h3>
           <form onSubmit={salvar}>
-            <div className="campo">
-              <label>Venda / Atendimento *</label>
+            <div className="form-group">
+              <label>Atendimento / Venda *</label>
               <select
                 value={idVenda}
                 onChange={(e) => setIdVenda(e.target.value)}
@@ -91,80 +95,95 @@ export default function PosVenda({ setMensagem }) {
                 <option value="">Selecione o atendimento...</option>
                 {vendas.map((v) => (
                   <option key={v.id} value={v.id}>
-                    Venda #{v.id} - {v.cliente?.pessoa?.nome}
+                    {v.cliente?.pessoa?.nome} — {v.data ? new Date(v.data).toLocaleDateString('pt-BR') : ''} (R$ {Number(v.valor_final || 0).toFixed(2)})
                   </option>
                 ))}
               </select>
             </div>
 
-            <div className="campo">
-              <label>Nota (1 a 5 estrelas)</label>
-              <select
-                value={nota}
-                onChange={(e) => setNota(e.target.value)}
-              >
-                <option value="5">5 estrelas (Excelente)</option>
-                <option value="4">4 estrelas (Muito bom)</option>
-                <option value="3">3 estrelas (Regular)</option>
-                <option value="2">2 estrelas (Ruim)</option>
-                <option value="1">1 estrela (Péssimo)</option>
+            <div className="form-group">
+              <label>Nota de Satisfação</label>
+              <select value={nota} onChange={(e) => setNota(e.target.value)}>
+                <option value="5">★★★★★ — 5 Estrelas (Excelente)</option>
+                <option value="4">★★★★☆ — 4 Estrelas (Muito Bom)</option>
+                <option value="3">★★★☆☆ — 3 Estrelas (Bom)</option>
+                <option value="2">★★☆☆☆ — 2 Estrelas (Regular)</option>
+                <option value="1">★☆☆☆☆ — 1 Estrela (Ruim)</option>
               </select>
             </div>
 
-            <div className="campo">
+            <div className="form-group">
               <label>Comentário da Cliente</label>
               <textarea
+                rows="2"
                 value={comentario}
                 onChange={(e) => setComentario(e.target.value)}
-                placeholder="Opinião sobre o atendimento"
+                placeholder="Feedback sobre o resultado, pontualidade e experiência..."
               />
             </div>
 
-            <button type="submit" className="btn btn-principal">
-              Salvar Feedback
-            </button>
+            <div className="form-actions">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setMostrarForm(false)}
+              >
+                Cancelar
+              </button>
+              <button type="submit" className="btn btn-primary">
+                Salvar Avaliação
+              </button>
+            </div>
           </form>
         </div>
       )}
 
-      <div className="tabela-container">
-        <table>
-          <thead>
-            <tr>
-              <th>Data</th>
-              <th>Cliente</th>
-              <th>Venda</th>
-              <th>Nota</th>
-              <th>Comentário</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {avaliacoes.length === 0 ? (
+      <div className="table-card">
+        <div className="table-header-box">
+          <h3>Avaliações Registradas ({avaliacoes.length})</h3>
+        </div>
+        <div className="table-container">
+          <table>
+            <thead>
               <tr>
-                <td colSpan="6">Nenhum feedback registrado ainda.</td>
+                <th>Data</th>
+                <th>Cliente</th>
+                <th>Nota</th>
+                <th>Comentário</th>
+                <th>Ações</th>
               </tr>
-            ) : (
-              avaliacoes.map((av) => (
-                <tr key={av.id}>
-                  <td>{new Date(av.data).toLocaleDateString('pt-BR')}</td>
-                  <td>{av.venda?.cliente?.pessoa?.nome || 'Cliente'}</td>
-                  <td>Venda #{av.id_venda}</td>
-                  <td>{av.avaliacao} / 5</td>
-                  <td>{av.comentario || '-'}</td>
-                  <td>
-                    <button
-                      className="btn btn-excluir"
-                      onClick={() => remover(av.id)}
-                    >
-                      Excluir
-                    </button>
-                  </td>
+            </thead>
+            <tbody>
+              {avaliacoes.length === 0 ? (
+                <tr>
+                  <td colSpan="5" className="table-empty">Nenhuma avaliação registrada ainda.</td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                avaliacoes.map((item) => (
+                  <tr key={item.id}>
+                    <td>{item.data ? new Date(item.data).toLocaleDateString('pt-BR') : '-'}</td>
+                    <td><strong>{item.venda?.cliente?.pessoa?.nome || 'Cliente'}</strong></td>
+                    <td>
+                      <span style={{ color: '#d97706', fontSize: '14px', letterSpacing: '2px' }}>
+                        {'★'.repeat(item.avaliacao || 5)}
+                        {'☆'.repeat(5 - (item.avaliacao || 5))}
+                      </span>
+                    </td>
+                    <td>{item.comentario || '-'}</td>
+                    <td>
+                      <button
+                        className="btn btn-danger btn-sm"
+                        onClick={() => remover(item.id)}
+                      >
+                        Excluir
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

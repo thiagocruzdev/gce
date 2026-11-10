@@ -4,6 +4,7 @@ import { getClientes, criarCliente, excluirCliente } from '../services/api';
 export default function Clientes({ setMensagem }) {
   const [clientes, setClientes] = useState([]);
   const [mostrarForm, setMostrarForm] = useState(false);
+  const [busca, setBusca] = useState('');
 
   const [nome, setNome] = useState('');
   const [cpf, setCpf] = useState('');
@@ -18,7 +19,7 @@ export default function Clientes({ setMensagem }) {
   async function carregarClientes() {
     try {
       const dados = await getClientes();
-      setClientes(dados);
+      setClientes(dados || []);
     } catch (erro) {
       console.log('Erro ao buscar clientes:', erro);
     }
@@ -28,7 +29,7 @@ export default function Clientes({ setMensagem }) {
     e.preventDefault();
 
     if (!nome.trim() || !cpf.trim()) {
-      alert('Preencha pelo menos nome e CPF!');
+      alert('Nome e CPF são obrigatórios!');
       return;
     }
 
@@ -56,9 +57,7 @@ export default function Clientes({ setMensagem }) {
   }
 
   async function remover(id) {
-    const confirmou = window.confirm('Deseja realmente excluir este cliente?');
-    if (!confirmou) return;
-
+    if (!window.confirm('Deseja realmente excluir este cliente?')) return;
     try {
       await excluirCliente(id);
       if (setMensagem) setMensagem('Cliente excluído com sucesso!');
@@ -68,34 +67,57 @@ export default function Clientes({ setMensagem }) {
     }
   }
 
+  const clientesFiltrados = clientes.filter(c => {
+    const termo = busca.toLowerCase();
+    const nomeC = (c.pessoa?.nome || '').toLowerCase();
+    const cpfC = (c.pessoa?.cpf || '').toLowerCase();
+    const tel = (c.pessoa?.telefone || '').toLowerCase();
+    return nomeC.includes(termo) || cpfC.includes(termo) || tel.includes(termo);
+  });
+
   return (
     <div>
-      <div className="topo-pagina">
-        <h2>Cadastro de Clientes</h2>
-        <button
-          className="btn btn-principal"
-          onClick={() => setMostrarForm(!mostrarForm)}
-        >
-          {mostrarForm ? 'Cancelar' : '+ Novo Cliente'}
-        </button>
+      <div className="page-header">
+        <div className="page-header-text">
+          <h2>Clientes</h2>
+          <p>Cadastro e listagem de clientes da clínica</p>
+        </div>
+
+        <div className="page-header-actions">
+          <input
+            type="text"
+            className="search-input"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder="Buscar por nome ou CPF..."
+          />
+
+          <button
+            className="btn btn-primary"
+            onClick={() => setMostrarForm(!mostrarForm)}
+          >
+            {mostrarForm ? 'Cancelar' : '+ Novo Cliente'}
+          </button>
+        </div>
       </div>
 
       {mostrarForm && (
-        <div className="formulario-card">
-          <h3>Preencha os dados do cliente</h3>
+        <div className="form-card">
+          <h3 className="form-title">Cadastrar Novo Cliente</h3>
           <form onSubmit={cadastrar}>
-            <div className="linha-campos">
-              <div className="campo">
-                <label>Nome completo *</label>
+            <div className="form-grid-2">
+              <div className="form-group">
+                <label>Nome Completo *</label>
                 <input
                   type="text"
                   value={nome}
                   onChange={(e) => setNome(e.target.value)}
-                  placeholder="Nome do cliente"
+                  placeholder="Ex: Maria Silva"
                   required
                 />
               </div>
-              <div className="campo">
+
+              <div className="form-group">
                 <label>CPF *</label>
                 <input
                   type="text"
@@ -107,8 +129,8 @@ export default function Clientes({ setMensagem }) {
               </div>
             </div>
 
-            <div className="linha-campos">
-              <div className="campo">
+            <div className="form-grid-2">
+              <div className="form-group">
                 <label>Telefone</label>
                 <input
                   type="text"
@@ -117,19 +139,20 @@ export default function Clientes({ setMensagem }) {
                   placeholder="(00) 00000-0000"
                 />
               </div>
-              <div className="campo">
+
+              <div className="form-group">
                 <label>E-mail</label>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="email@exemplo.com"
+                  placeholder="cliente@exemplo.com"
                 />
               </div>
             </div>
 
-            <div className="campo">
-              <label>Preferência de horário</label>
+            <div className="form-group">
+              <label>Preferência de Horário</label>
               <select
                 value={prefHorario}
                 onChange={(e) => setPrefHorario(e.target.value)}
@@ -141,53 +164,67 @@ export default function Clientes({ setMensagem }) {
               </select>
             </div>
 
-            <button type="submit" className="btn btn-principal">
-              Salvar Cliente
-            </button>
+            <div className="form-actions">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setMostrarForm(false)}
+              >
+                Cancelar
+              </button>
+              <button type="submit" className="btn btn-primary">
+                Salvar Cliente
+              </button>
+            </div>
           </form>
         </div>
       )}
 
-      <div className="tabela-container">
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Nome</th>
-              <th>CPF</th>
-              <th>Telefone</th>
-              <th>E-mail</th>
-              <th>Horário Preferido</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {clientes.length === 0 ? (
+      <div className="table-card">
+        <div className="table-header-box">
+          <h3>Clientes Cadastrados ({clientesFiltrados.length})</h3>
+        </div>
+        <div className="table-container">
+          <table>
+            <thead>
               <tr>
-                <td colSpan="7">Nenhum cliente cadastrado ainda.</td>
+                <th>ID</th>
+                <th>Nome</th>
+                <th>CPF</th>
+                <th>Telefone</th>
+                <th>E-mail</th>
+                <th>Pref. Horário</th>
+                <th>Ações</th>
               </tr>
-            ) : (
-              clientes.map((c) => (
-                <tr key={c.id_pessoa}>
-                  <td>{c.id_pessoa}</td>
-                  <td>{c.pessoa?.nome}</td>
-                  <td>{c.pessoa?.cpf}</td>
-                  <td>{c.pessoa?.telefone || '-'}</td>
-                  <td>{c.pessoa?.email || '-'}</td>
-                  <td>{c.pref_horario || '-'}</td>
-                  <td>
-                    <button
-                      className="btn btn-excluir"
-                      onClick={() => remover(c.id_pessoa)}
-                    >
-                      Excluir
-                    </button>
-                  </td>
+            </thead>
+            <tbody>
+              {clientesFiltrados.length === 0 ? (
+                <tr>
+                  <td colSpan="7" className="table-empty">Nenhum cliente cadastrado ainda.</td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                clientesFiltrados.map((c) => (
+                  <tr key={c.id_pessoa}>
+                    <td>{c.id_pessoa}</td>
+                    <td><strong>{c.pessoa?.nome}</strong></td>
+                    <td>{c.pessoa?.cpf}</td>
+                    <td>{c.pessoa?.telefone || '-'}</td>
+                    <td>{c.pessoa?.email || '-'}</td>
+                    <td>{c.pref_horario || '-'}</td>
+                    <td>
+                      <button
+                        className="btn btn-danger btn-sm"
+                        onClick={() => remover(c.id_pessoa)}
+                      >
+                        Excluir
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

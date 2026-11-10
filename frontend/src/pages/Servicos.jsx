@@ -17,7 +17,7 @@ export default function Servicos({ setMensagem }) {
   async function carregarServicos() {
     try {
       const dados = await getServicos();
-      setServicos(dados);
+      setServicos(dados || []);
     } catch (erro) {
       console.log('Erro ao buscar serviços:', erro);
     }
@@ -26,17 +26,17 @@ export default function Servicos({ setMensagem }) {
   async function cadastrar(e) {
     e.preventDefault();
 
-    if (!nome || !valor) {
+    if (!nome.trim() || !valor) {
       alert('Informe o nome e o valor do serviço!');
       return;
     }
 
     try {
       await criarServico({
-        nome: nome,
-        descricao: descricao,
+        nome: nome.trim(),
+        descricao: descricao.trim(),
         valor: parseFloat(valor),
-        duracao_minutos: parseInt(duracao)
+        duracao_minutos: parseInt(duracao) || 60
       });
 
       setNome('');
@@ -53,9 +53,7 @@ export default function Servicos({ setMensagem }) {
   }
 
   async function remover(id) {
-    const confirmou = window.confirm('Deseja excluir este serviço?');
-    if (!confirmou) return;
-
+    if (!window.confirm('Deseja excluir este serviço?')) return;
     try {
       await excluirServico(id);
       if (setMensagem) setMensagem('Serviço excluído com sucesso!');
@@ -67,10 +65,14 @@ export default function Servicos({ setMensagem }) {
 
   return (
     <div>
-      <div className="topo-pagina">
-        <h2>Catálogo de Serviços</h2>
+      <div className="page-header">
+        <div className="page-header-text">
+          <h2>Catálogo de Serviços</h2>
+          <p>Procedimentos e tratamentos disponíveis na clínica</p>
+        </div>
+
         <button
-          className="btn btn-principal"
+          className="btn btn-primary"
           onClick={() => setMostrarForm(!mostrarForm)}
         >
           {mostrarForm ? 'Cancelar' : '+ Novo Serviço'}
@@ -78,31 +80,22 @@ export default function Servicos({ setMensagem }) {
       </div>
 
       {mostrarForm && (
-        <div className="formulario-card">
-          <h3>Preencha os dados do serviço</h3>
+        <div className="form-card">
+          <h3 className="form-title">Cadastrar Novo Serviço</h3>
           <form onSubmit={cadastrar}>
-            <div className="campo">
-              <label>Nome do serviço *</label>
+            <div className="form-group">
+              <label>Nome do Serviço *</label>
               <input
                 type="text"
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
-                placeholder="Ex: Limpeza de Pele"
+                placeholder="Ex: Limpeza de Pele Profunda"
                 required
               />
             </div>
 
-            <div className="campo">
-              <label>Descrição</label>
-              <textarea
-                value={descricao}
-                onChange={(e) => setDescricao(e.target.value)}
-                placeholder="Breve descrição do procedimento"
-              />
-            </div>
-
-            <div className="linha-campos">
-              <div className="campo">
+            <div className="form-grid-2">
+              <div className="form-group">
                 <label>Valor (R$) *</label>
                 <input
                   type="number"
@@ -113,7 +106,8 @@ export default function Servicos({ setMensagem }) {
                   required
                 />
               </div>
-              <div className="campo">
+
+              <div className="form-group">
                 <label>Duração (minutos)</label>
                 <input
                   type="number"
@@ -124,51 +118,75 @@ export default function Servicos({ setMensagem }) {
               </div>
             </div>
 
-            <button type="submit" className="btn btn-principal">
-              Salvar Serviço
-            </button>
+            <div className="form-group">
+              <label>Descrição</label>
+              <textarea
+                rows="2"
+                value={descricao}
+                onChange={(e) => setDescricao(e.target.value)}
+                placeholder="Breve descrição dos benefícios e etapas do procedimento..."
+              />
+            </div>
+
+            <div className="form-actions">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setMostrarForm(false)}
+              >
+                Cancelar
+              </button>
+              <button type="submit" className="btn btn-primary">
+                Salvar Serviço
+              </button>
+            </div>
           </form>
         </div>
       )}
 
-      <div className="tabela-container">
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Nome</th>
-              <th>Descrição</th>
-              <th>Duração</th>
-              <th>Preço (R$)</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {servicos.length === 0 ? (
+      <div className="table-card">
+        <div className="table-header-box">
+          <h3>Serviços Cadastrados ({servicos.length})</h3>
+        </div>
+        <div className="table-container">
+          <table>
+            <thead>
               <tr>
-                <td colSpan="6">Nenhum serviço cadastrado.</td>
+                <th>ID</th>
+                <th>Nome</th>
+                <th>Descrição</th>
+                <th>Duração</th>
+                <th>Valor</th>
+                <th>Ações</th>
               </tr>
-            ) : (
-              servicos.map((s) => (
-                <tr key={s.id}>
-                  <td>{s.id}</td>
-                  <td>{s.nome}</td>
-                  <td>{s.descricao || '-'}</td>
-                  <td>{s.duracao_minutos ? s.duracao_minutos + ' min' : '-'}</td>
-                  <td>R$ {s.valor ? Number(s.valor).toFixed(2) : '0.00'}</td>
-                  <td>
-                    <button
-                      className="btn btn-excluir"
-                      onClick={() => remover(s.id)}
-                    >
-                      Excluir
-                    </button>
-                  </td>
+            </thead>
+            <tbody>
+              {servicos.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="table-empty">Nenhum serviço cadastrado ainda.</td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                servicos.map((s) => (
+                  <tr key={s.id}>
+                    <td>{s.id}</td>
+                    <td><strong>{s.nome}</strong></td>
+                    <td>{s.descricao || '-'}</td>
+                    <td>{s.duracao_minutos ? `${s.duracao_minutos} min` : '-'}</td>
+                    <td><strong>R$ {Number(s.valor || 0).toFixed(2)}</strong></td>
+                    <td>
+                      <button
+                        className="btn btn-danger btn-sm"
+                        onClick={() => remover(s.id)}
+                      >
+                        Excluir
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { getClientes, getAgendamentos, getServicos, getProdutos, getVendas } from '../services/api';
+import { getClientes, getAgendamentos, getServicos, getVendas } from '../services/api';
 
 export default function Dashboard({ setTelaAtual }) {
   const [totalClientes, setTotalClientes] = useState(0);
   const [totalAgendamentos, setTotalAgendamentos] = useState(0);
   const [totalServicos, setTotalServicos] = useState(0);
-  const [totalProdutos, setTotalProdutos] = useState(0);
   const [totalVendas, setTotalVendas] = useState(0);
   const [ultimosAgendamentos, setUltimosAgendamentos] = useState([]);
+  const [ultimasVendas, setUltimasVendas] = useState([]);
 
   useEffect(() => {
     carregarDados();
@@ -15,90 +15,156 @@ export default function Dashboard({ setTelaAtual }) {
 
   async function carregarDados() {
     try {
-      const clientes = await getClientes();
-      const agendamentos = await getAgendamentos();
-      const servicos = await getServicos();
-      const produtos = await getProdutos();
-      const vendas = await getVendas();
+      const [clientes, agendamentos, servicos, vendas] = await Promise.all([
+        getClientes().catch(() => []),
+        getAgendamentos().catch(() => []),
+        getServicos().catch(() => []),
+        getVendas().catch(() => [])
+      ]);
 
       setTotalClientes(clientes.length || 0);
       setTotalAgendamentos(agendamentos.length || 0);
       setTotalServicos(servicos.length || 0);
-      setTotalProdutos(produtos.length || 0);
 
-      let somaVendas = 0;
-      for (let i = 0; i < vendas.length; i++) {
-        somaVendas += vendas[i].valor_final || 0;
-      }
+      const somaVendas = (vendas || []).reduce((acc, v) => acc + (v.valor_final || 0), 0);
       setTotalVendas(somaVendas);
 
-      setUltimosAgendamentos(agendamentos.slice(0, 5));
+      setUltimosAgendamentos((agendamentos || []).slice(0, 5));
+      setUltimasVendas((vendas || []).slice(0, 5));
     } catch (erro) {
-      console.log('Erro ao carregar dados:', erro);
+      console.log('Erro ao carregar dashboard:', erro);
     }
   }
 
   return (
     <div>
-      <div className="topo-pagina">
-        <h2>Visão Geral da Clínica</h2>
-      </div>
-
-      <div className="cards">
-        <div className="card">
-          <h3>{totalClientes}</h3>
-          <p>Clientes Cadastrados</p>
-        </div>
-        <div className="card">
-          <h3>{totalAgendamentos}</h3>
-          <p>Agendamentos Feitos</p>
-        </div>
-        <div className="card">
-          <h3>{totalServicos}</h3>
-          <p>Serviços Oferecidos</p>
-        </div>
-        <div className="card">
-          <h3>{totalProdutos}</h3>
-          <p>Produtos no Estoque</p>
-        </div>
-        <div className="card">
-          <h3>R$ {totalVendas.toFixed(2)}</h3>
-          <p>Total em Vendas</p>
+      <div className="page-header">
+        <div className="page-header-text">
+          <h2>Painel Principal</h2>
+          <p>Visão geral de atendimentos, clientes e faturamento da clínica</p>
         </div>
       </div>
 
-      <div className="tabela-container">
-        <div style={{ padding: '15px' }}>
-          <h3>Últimos Agendamentos</h3>
+      {/* Cards de Métricas */}
+      <div className="metric-cards-grid">
+        <div className="metric-card">
+          <div className="metric-card-label">Clientes Cadastrados</div>
+          <div className="metric-card-value">{totalClientes}</div>
+          <div className="metric-card-sub">Base ativa de clientes</div>
         </div>
-        <table>
-          <thead>
-            <tr>
-              <th>Cliente</th>
-              <th>Serviço</th>
-              <th>Data</th>
-              <th>Horário</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ultimosAgendamentos.length === 0 ? (
+
+        <div className="metric-card">
+          <div className="metric-card-label">Agendamentos</div>
+          <div className="metric-card-value">{totalAgendamentos}</div>
+          <div className="metric-card-sub">Horários registrados</div>
+        </div>
+
+        <div className="metric-card">
+          <div className="metric-card-label">Serviços Oferecidos</div>
+          <div className="metric-card-value">{totalServicos}</div>
+          <div className="metric-card-sub">Procedimentos no catálogo</div>
+        </div>
+
+        <div className="metric-card">
+          <div className="metric-card-label">Faturamento Total</div>
+          <div className="metric-card-value">
+            R$ {Number(totalVendas).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+          </div>
+          <div className="metric-card-sub">Receita acumulada</div>
+        </div>
+      </div>
+
+      {/* Tabela de Próximos Agendamentos */}
+      <div className="table-card">
+        <div className="table-header-box">
+          <h3>Próximos Agendamentos</h3>
+          <button className="btn btn-secondary btn-sm" onClick={() => setTelaAtual('agendamentos')}>
+            Ver todos
+          </button>
+        </div>
+        <div className="table-container">
+          <table>
+            <thead>
               <tr>
-                <td colSpan="5">Nenhum agendamento encontrado</td>
+                <th>Data</th>
+                <th>Horário</th>
+                <th>Cliente</th>
+                <th>Serviço</th>
+                <th>Profissional</th>
+                <th>Status</th>
               </tr>
-            ) : (
-              ultimosAgendamentos.map((item) => (
-                <tr key={item.id}>
-                  <td>{item.cliente?.pessoa?.nome || 'Não informado'}</td>
-                  <td>{item.servico?.nome || 'Não informado'}</td>
-                  <td>{new Date(item.data_marcada).toLocaleDateString('pt-BR')}</td>
-                  <td>{item.hora_inicio || '-'}</td>
-                  <td>{item.status}</td>
+            </thead>
+            <tbody>
+              {ultimosAgendamentos.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="table-empty">Nenhum agendamento registrado ainda.</td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                ultimosAgendamentos.map((item) => {
+                  const statusClass = (item.status || '').toLowerCase();
+                  return (
+                    <tr key={item.id}>
+                      <td>{item.data_marcada ? new Date(item.data_marcada).toLocaleDateString('pt-BR') : '-'}</td>
+                      <td><strong>{item.hora_inicio || '-'}</strong></td>
+                      <td>{item.cliente?.pessoa?.nome || 'Cliente'}</td>
+                      <td>{item.servico?.nome || 'Serviço'}</td>
+                      <td>{item.colaborador?.pessoa?.nome || 'Profissional'}</td>
+                      <td>
+                        <span className={`badge badge-${statusClass}`}>
+                          {item.status || 'Pendente'}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Tabela de Últimas Vendas */}
+      <div className="table-card">
+        <div className="table-header-box">
+          <h3>Últimas Vendas &amp; Faturamentos</h3>
+          <button className="btn btn-secondary btn-sm" onClick={() => setTelaAtual('vendas')}>
+            Ver todas
+          </button>
+        </div>
+        <div className="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Cliente</th>
+                <th>Profissional</th>
+                <th>Valor Total</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ultimasVendas.length === 0 ? (
+                <tr>
+                  <td colSpan="5" className="table-empty">Nenhuma venda registrada ainda.</td>
+                </tr>
+              ) : (
+                ultimasVendas.map((v) => (
+                  <tr key={v.id}>
+                    <td>{v.data ? new Date(v.data).toLocaleDateString('pt-BR') : '-'}</td>
+                    <td>{v.cliente?.pessoa?.nome || 'Cliente'}</td>
+                    <td>{v.colaborador?.pessoa?.nome || 'Profissional'}</td>
+                    <td><strong>R$ {Number(v.valor_final || 0).toFixed(2)}</strong></td>
+                    <td>
+                      <span className="badge badge-pago">
+                        {v.status || 'Pago'}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

@@ -21,28 +21,28 @@ export default function App() {
   }
 
   return (
-    <div>
+    <div className="app-layout">
       <Navbar telaAtual={telaAtual} setTelaAtual={setTelaAtual} />
 
-      <main className="conteudo">
+      <main className="app-container">
         {mensagem && (
-          <div className="alerta alerta-sucesso">
+          <div className="alerta-toast">
             {mensagem}
           </div>
         )}
 
         {telaAtual === 'inicio' && <Dashboard setTelaAtual={setTelaAtual} />}
+        {telaAtual === 'agendamentos' && <Agendamentos setMensagem={exibirMensagem} />}
         {telaAtual === 'clientes' && <Clientes setMensagem={exibirMensagem} />}
         {telaAtual === 'colaboradores' && <Colaboradores setMensagem={exibirMensagem} />}
         {telaAtual === 'servicos' && <Servicos setMensagem={exibirMensagem} />}
         {telaAtual === 'produtos' && <Produtos setMensagem={exibirMensagem} />}
-        {telaAtual === 'agendamentos' && <Agendamentos setMensagem={exibirMensagem} />}
         {telaAtual === 'vendas' && <Vendas setMensagem={exibirMensagem} />}
         {telaAtual === 'posvenda' && <PosVenda setMensagem={exibirMensagem} />}
       </main>
 
-      <footer>
-        <p>GCE - Sistema de Gestão para Clínica Estética &bull; Trabalho ADS</p>
+      <footer className="footer-simples">
+        Renata Faveri &bull; Beauty &amp; Academy &bull; Sistema de Gestão Estética
       </footer>
     </div>
   );
