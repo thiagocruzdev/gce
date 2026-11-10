@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { getServicos, criarServico, excluirServico } from '../services/api';
+import { getServicos, criarServico, atualizarServico, excluirServico } from '../services/api';
 
 export default function Servicos({ setMensagem }) {
   const [servicos, setServicos] = useState([]);
   const [mostrarForm, setMostrarForm] = useState(false);
+  const [editandoId, setEditandoId] = useState(null);
 
   const [nome, setNome] = useState('');
   const [descricao, setDescricao] = useState('');
@@ -23,7 +24,35 @@ export default function Servicos({ setMensagem }) {
     }
   }
 
-  async function cadastrar(e) {
+  function abrirNovo() {
+    setEditandoId(null);
+    setNome('');
+    setDescricao('');
+    setValor('');
+    setDuracao('60');
+    setMostrarForm(true);
+  }
+
+  function iniciarEdicao(s) {
+    setEditandoId(s.id);
+    setNome(s.nome || '');
+    setDescricao(s.descricao || '');
+    setValor(s.valor != null ? String(s.valor) : '');
+    setDuracao(s.duracao_minutos != null ? String(s.duracao_minutos) : '60');
+    setMostrarForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function cancelarForm() {
+    setMostrarForm(false);
+    setEditandoId(null);
+    setNome('');
+    setDescricao('');
+    setValor('');
+    setDuracao('60');
+  }
+
+  async function salvar(e) {
     e.preventDefault();
 
     if (!nome.trim() || !valor) {
@@ -32,23 +61,28 @@ export default function Servicos({ setMensagem }) {
     }
 
     try {
-      await criarServico({
-        nome: nome.trim(),
-        descricao: descricao.trim(),
-        valor: parseFloat(valor),
-        duracao_minutos: parseInt(duracao) || 60
-      });
+      if (editandoId) {
+        await atualizarServico(editandoId, {
+          nome: nome.trim(),
+          descricao: descricao.trim(),
+          valor: parseFloat(valor),
+          duracao_minutos: parseInt(duracao) || 60
+        });
+        if (setMensagem) setMensagem('Serviço atualizado com sucesso!');
+      } else {
+        await criarServico({
+          nome: nome.trim(),
+          descricao: descricao.trim(),
+          valor: parseFloat(valor),
+          duracao_minutos: parseInt(duracao) || 60
+        });
+        if (setMensagem) setMensagem('Serviço cadastrado com sucesso!');
+      }
 
-      setNome('');
-      setDescricao('');
-      setValor('');
-      setDuracao('60');
-      setMostrarForm(false);
-
-      if (setMensagem) setMensagem('Serviço cadastrado com sucesso!');
+      cancelarForm();
       carregarServicos();
     } catch (erro) {
-      alert('Erro ao cadastrar serviço: ' + erro.message);
+      alert('Erro ao salvar serviço: ' + erro.message);
     }
   }
 
@@ -73,16 +107,21 @@ export default function Servicos({ setMensagem }) {
 
         <button
           className="btn btn-primary"
-          onClick={() => setMostrarForm(!mostrarForm)}
+          onClick={() => {
+            if (mostrarForm) cancelarForm();
+            else abrirNovo();
+          }}
         >
-          {mostrarForm ? 'Cancelar' : '+ Novo Serviço'}
+          {mostrarForm ? 'Fechar Formulário' : '+ Novo Serviço'}
         </button>
       </div>
 
       {mostrarForm && (
         <div className="form-card">
-          <h3 className="form-title">Cadastrar Novo Serviço</h3>
-          <form onSubmit={cadastrar}>
+          <h3 className="form-title">
+            {editandoId ? `Editar Serviço #${editandoId}` : 'Cadastrar Novo Serviço'}
+          </h3>
+          <form onSubmit={salvar}>
             <div className="form-group">
               <label>Nome do Serviço *</label>
               <input
@@ -132,12 +171,12 @@ export default function Servicos({ setMensagem }) {
               <button
                 type="button"
                 className="btn btn-secondary"
-                onClick={() => setMostrarForm(false)}
+                onClick={cancelarForm}
               >
                 Cancelar
               </button>
               <button type="submit" className="btn btn-primary">
-                Salvar Serviço
+                {editandoId ? 'Atualizar Serviço' : 'Salvar Serviço'}
               </button>
             </div>
           </form>
@@ -147,6 +186,13 @@ export default function Servicos({ setMensagem }) {
       <div className="table-card">
         <div className="table-header-box">
           <h3>Serviços Cadastrados ({servicos.length})</h3>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={abrirNovo}
+          >
+            + Adicionar
+          </button>
         </div>
         <div className="table-container">
           <table>
@@ -168,18 +214,28 @@ export default function Servicos({ setMensagem }) {
               ) : (
                 servicos.map((s) => (
                   <tr key={s.id}>
-                    <td>{s.id}</td>
+                    <td>#{s.id}</td>
                     <td><strong>{s.nome}</strong></td>
                     <td>{s.descricao || '-'}</td>
                     <td>{s.duracao_minutos ? `${s.duracao_minutos} min` : '-'}</td>
                     <td><strong>R$ {Number(s.valor || 0).toFixed(2)}</strong></td>
                     <td>
-                      <button
-                        className="btn btn-danger btn-sm"
-                        onClick={() => remover(s.id)}
-                      >
-                        Excluir
-                      </button>
+                      <div className="acoes-coluna">
+                        <button
+                          type="button"
+                          className="btn-editar"
+                          onClick={() => iniciarEdicao(s)}
+                        >
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-danger btn-sm"
+                          onClick={() => remover(s.id)}
+                        >
+                          Excluir
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))

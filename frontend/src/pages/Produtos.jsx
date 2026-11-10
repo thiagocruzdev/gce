@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { getProdutos, criarProduto, excluirProduto, movimentarEstoque } from '../services/api';
+import { getProdutos, criarProduto, atualizarProduto, excluirProduto, movimentarEstoque } from '../services/api';
 
 export default function Produtos({ setMensagem }) {
   const [produtos, setProdutos] = useState([]);
   const [mostrarForm, setMostrarForm] = useState(false);
   const [mostrarEstoque, setMostrarEstoque] = useState(false);
+  const [editandoId, setEditandoId] = useState(null);
 
   const [nome, setNome] = useState('');
   const [descricao, setDescricao] = useState('');
@@ -30,7 +31,43 @@ export default function Produtos({ setMensagem }) {
     }
   }
 
-  async function cadastrarProduto(e) {
+  function abrirNovo() {
+    setEditandoId(null);
+    setNome('');
+    setDescricao('');
+    setValorCusto('');
+    setValorVenda('');
+    setQuantidade('0');
+    setQuantidadeMinima('5');
+    setMostrarEstoque(false);
+    setMostrarForm(true);
+  }
+
+  function iniciarEdicao(p) {
+    setEditandoId(p.id);
+    setNome(p.nome || '');
+    setDescricao(p.descricao || '');
+    setValorCusto(p.valor_custo != null ? String(p.valor_custo) : '');
+    setValorVenda(p.valor_venda != null ? String(p.valor_venda) : '');
+    setQuantidade(p.qntd != null ? String(p.qntd) : '0');
+    setQuantidadeMinima(p.qntd_min != null ? String(p.qntd_min) : '5');
+    setMostrarEstoque(false);
+    setMostrarForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function cancelarForm() {
+    setMostrarForm(false);
+    setEditandoId(null);
+    setNome('');
+    setDescricao('');
+    setValorCusto('');
+    setValorVenda('');
+    setQuantidade('0');
+    setQuantidadeMinima('5');
+  }
+
+  async function salvarProduto(e) {
     e.preventDefault();
 
     if (!nome.trim() || !valorVenda) {
@@ -39,26 +76,32 @@ export default function Produtos({ setMensagem }) {
     }
 
     try {
-      await criarProduto({
-        nome: nome.trim(),
-        descricao: descricao.trim(),
-        valor_custo: valorCusto ? parseFloat(valorCusto) : null,
-        valor_venda: parseFloat(valorVenda),
-        qntd: parseFloat(quantidade) || 0,
-        qntd_min: parseFloat(quantidadeMinima) || 0
-      });
+      if (editandoId) {
+        await atualizarProduto(editandoId, {
+          nome: nome.trim(),
+          descricao: descricao.trim(),
+          valor_custo: valorCusto ? parseFloat(valorCusto) : null,
+          valor_venda: parseFloat(valorVenda),
+          qntd: parseFloat(quantidade) || 0,
+          qntd_min: parseFloat(quantidadeMinima) || 0
+        });
+        if (setMensagem) setMensagem('Produto atualizado com sucesso!');
+      } else {
+        await criarProduto({
+          nome: nome.trim(),
+          descricao: descricao.trim(),
+          valor_custo: valorCusto ? parseFloat(valorCusto) : null,
+          valor_venda: parseFloat(valorVenda),
+          qntd: parseFloat(quantidade) || 0,
+          qntd_min: parseFloat(quantidadeMinima) || 0
+        });
+        if (setMensagem) setMensagem('Produto cadastrado com sucesso!');
+      }
 
-      setNome('');
-      setDescricao('');
-      setValorCusto('');
-      setValorVenda('');
-      setQuantidade('0');
-      setMostrarForm(false);
-
-      if (setMensagem) setMensagem('Produto cadastrado com sucesso!');
+      cancelarForm();
       carregarProdutos();
     } catch (erro) {
-      alert('Erro ao cadastrar produto: ' + erro.message);
+      alert('Erro ao salvar produto: ' + erro.message);
     }
   }
 
@@ -91,7 +134,7 @@ export default function Produtos({ setMensagem }) {
     if (!window.confirm('Deseja excluir este produto?')) return;
     try {
       await excluirProduto(id);
-      if (setMensagem) setMensagem('Produto excluído!');
+      if (setMensagem) setMensagem('Produto excluído com sucesso!');
       carregarProdutos();
     } catch (erro) {
       alert('Erro ao excluir produto: ' + erro.message);
@@ -102,80 +145,82 @@ export default function Produtos({ setMensagem }) {
     <div>
       <div className="page-header">
         <div className="page-header-text">
-          <h2>Produtos &amp; Estoque</h2>
-          <p>Controle de cosméticos, produtos home care e insumos</p>
+          <h2>Estoque &amp; Produtos</h2>
+          <p>Cosméticos, produtos de cuidados e controle de inventário</p>
         </div>
 
-        <div className="page-header-actions">
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <button
             className="btn btn-secondary"
             onClick={() => {
               setMostrarEstoque(!mostrarEstoque);
-              setMostrarForm(false);
+              if (mostrarForm) cancelarForm();
             }}
           >
-            {mostrarEstoque ? 'Fechar Estoque' : 'Movimentar Estoque'}
+            {mostrarEstoque ? 'Fechar Estoque' : '± Movimentar Estoque'}
           </button>
-
           <button
             className="btn btn-primary"
             onClick={() => {
-              setMostrarForm(!mostrarForm);
-              setMostrarEstoque(false);
+              if (mostrarForm) cancelarForm();
+              else abrirNovo();
             }}
           >
-            {mostrarForm ? 'Cancelar' : '+ Novo Produto'}
+            {mostrarForm ? 'Fechar Formulário' : '+ Novo Produto'}
           </button>
         </div>
       </div>
 
       {mostrarForm && (
         <div className="form-card">
-          <h3 className="form-title">Cadastrar Novo Produto</h3>
-          <form onSubmit={cadastrarProduto}>
+          <h3 className="form-title">
+            {editandoId ? `Editar Produto #${editandoId}` : 'Cadastrar Novo Produto'}
+          </h3>
+          <form onSubmit={salvarProduto}>
             <div className="form-group">
               <label>Nome do Produto *</label>
               <input
                 type="text"
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
-                placeholder="Ex: Sérum Ácido Hialurônico"
+                placeholder="Ex: Sérum Facial Clareador 30ml"
                 required
               />
             </div>
 
             <div className="form-grid-2">
               <div className="form-group">
-                <label>Valor de Venda (R$) *</label>
+                <label>Preço de Venda (R$) *</label>
                 <input
                   type="number"
                   step="0.01"
                   value={valorVenda}
                   onChange={(e) => setValorVenda(e.target.value)}
-                  placeholder="150.00"
+                  placeholder="89.90"
                   required
                 />
               </div>
 
               <div className="form-group">
-                <label>Custo Unitário (R$)</label>
+                <label>Preço de Custo (R$)</label>
                 <input
                   type="number"
                   step="0.01"
                   value={valorCusto}
                   onChange={(e) => setValorCusto(e.target.value)}
-                  placeholder="80.00"
+                  placeholder="35.00"
                 />
               </div>
             </div>
 
             <div className="form-grid-2">
               <div className="form-group">
-                <label>Quantidade Inicial</label>
+                <label>Quantidade em Estoque</label>
                 <input
                   type="number"
                   value={quantidade}
                   onChange={(e) => setQuantidade(e.target.value)}
+                  placeholder="0"
                 />
               </div>
 
@@ -185,20 +230,31 @@ export default function Produtos({ setMensagem }) {
                   type="number"
                   value={quantidadeMinima}
                   onChange={(e) => setQuantidadeMinima(e.target.value)}
+                  placeholder="5"
                 />
               </div>
+            </div>
+
+            <div className="form-group">
+              <label>Descrição</label>
+              <textarea
+                rows="2"
+                value={descricao}
+                onChange={(e) => setDescricao(e.target.value)}
+                placeholder="Detalhes, marca, modo de uso ou indicação..."
+              />
             </div>
 
             <div className="form-actions">
               <button
                 type="button"
                 className="btn btn-secondary"
-                onClick={() => setMostrarForm(false)}
+                onClick={cancelarForm}
               >
                 Cancelar
               </button>
               <button type="submit" className="btn btn-primary">
-                Salvar Produto
+                {editandoId ? 'Atualizar Produto' : 'Salvar Produto'}
               </button>
             </div>
           </form>
@@ -206,17 +262,17 @@ export default function Produtos({ setMensagem }) {
       )}
 
       {mostrarEstoque && (
-        <div className="form-card">
-          <h3 className="form-title">Movimentar Estoque (Entrada / Saída)</h3>
+        <div className="form-card" style={{ borderColor: 'var(--brand-gold-medium)' }}>
+          <h3 className="form-title">Movimentação Rápida de Estoque</h3>
           <form onSubmit={movimentar}>
             <div className="form-group">
-              <label>Produto *</label>
+              <label>Selecione o Produto *</label>
               <select
                 value={idProdutoEstoque}
                 onChange={(e) => setIdProdutoEstoque(e.target.value)}
                 required
               >
-                <option value="">Selecione o produto...</option>
+                <option value="">Selecione...</option>
                 {produtos.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.nome} (Atual: {p.qntd} unid.)
@@ -227,19 +283,18 @@ export default function Produtos({ setMensagem }) {
 
             <div className="form-grid-2">
               <div className="form-group">
-                <label>Tipo de Movimento</label>
+                <label>Tipo de Movimentação</label>
                 <select
                   value={tipoMovimento}
                   onChange={(e) => setTipoMovimento(e.target.value)}
                 >
-                  <option value="ENTRADA">Entrada (+ Compra / Reposição)</option>
-                  <option value="SAIDA">Saída (- Venda manual / Uso em cabine)</option>
-                  <option value="AJUSTE">Ajuste de Inventário</option>
+                  <option value="ENTRADA">Entrada (Reposição / Compra)</option>
+                  <option value="SAIDA">Saída (Consumo / Ajuste)</option>
                 </select>
               </div>
 
               <div className="form-group">
-                <label>Quantidade *</label>
+                <label>Quantidade</label>
                 <input
                   type="number"
                   min="1"
@@ -269,6 +324,13 @@ export default function Produtos({ setMensagem }) {
       <div className="table-card">
         <div className="table-header-box">
           <h3>Produtos Cadastrados ({produtos.length})</h3>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={abrirNovo}
+          >
+            + Adicionar
+          </button>
         </div>
         <div className="table-container">
           <table>
@@ -304,12 +366,22 @@ export default function Produtos({ setMensagem }) {
                       <td>{p.valor_custo ? `R$ ${Number(p.valor_custo).toFixed(2)}` : '-'}</td>
                       <td><strong>R$ {Number(p.valor_venda || 0).toFixed(2)}</strong></td>
                       <td>
-                        <button
-                          className="btn btn-danger btn-sm"
-                          onClick={() => remover(p.id)}
-                        >
-                          Excluir
-                        </button>
+                        <div className="acoes-coluna">
+                          <button
+                            type="button"
+                            className="btn-editar"
+                            onClick={() => iniciarEdicao(p)}
+                          >
+                            Editar
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-danger btn-sm"
+                            onClick={() => remover(p.id)}
+                          >
+                            Excluir
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

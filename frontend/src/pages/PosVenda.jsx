@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { getPosVendas, getVendas, criarPosVenda, excluirPosVenda } from '../services/api';
+import { getPosVendas, getVendas, criarPosVenda, atualizarPosVenda, excluirPosVenda } from '../services/api';
 
 export default function PosVenda({ setMensagem }) {
   const [avaliacoes, setAvaliacoes] = useState([]);
   const [vendas, setVendas] = useState([]);
   const [mostrarForm, setMostrarForm] = useState(false);
+  const [editandoId, setEditandoId] = useState(null);
 
   const [idVenda, setIdVenda] = useState('');
   const [nota, setNota] = useState('5');
@@ -27,30 +28,59 @@ export default function PosVenda({ setMensagem }) {
     }
   }
 
+  function abrirNovo() {
+    setEditandoId(null);
+    setIdVenda('');
+    setNota('5');
+    setComentario('');
+    setMostrarForm(true);
+  }
+
+  function iniciarEdicao(item) {
+    setEditandoId(item.id);
+    setIdVenda(item.id_venda != null ? String(item.id_venda) : '');
+    setNota(item.avaliacao != null ? String(item.avaliacao) : '5');
+    setComentario(item.comentario || '');
+    setMostrarForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function cancelarForm() {
+    setMostrarForm(false);
+    setEditandoId(null);
+    setIdVenda('');
+    setNota('5');
+    setComentario('');
+  }
+
   async function salvar(e) {
     e.preventDefault();
 
-    if (!idVenda) {
+    if (!editandoId && !idVenda) {
       alert('Selecione uma venda!');
       return;
     }
 
     try {
-      await criarPosVenda({
-        id_venda: parseInt(idVenda),
-        avaliacao: parseInt(nota),
-        comentario: comentario.trim()
-      });
+      if (editandoId) {
+        await atualizarPosVenda(editandoId, {
+          avaliacao: parseInt(nota),
+          comentario: comentario.trim()
+        });
+        if (setMensagem) setMensagem('Avaliação atualizada com sucesso!');
+      } else {
+        await criarPosVenda({
+          id_venda: parseInt(idVenda),
+          avaliacao: parseInt(nota),
+          comentario: comentario.trim()
+        });
+        if (setMensagem) setMensagem('Avaliação registrada com sucesso!');
+      }
 
-      setIdVenda('');
-      setNota('5');
-      setComentario('');
-      setMostrarForm(false);
-
-      if (setMensagem) setMensagem('Avaliação registrada com sucesso!');
+      cancelarForm();
       carregarDados();
     } catch (erro) {
-      alert('Erro ao registrar avaliação: ' + erro.message);
+      alert('Erro ao salvar avaliação: ' + erro.message);
     }
   }
 
@@ -58,7 +88,7 @@ export default function PosVenda({ setMensagem }) {
     if (!window.confirm('Deseja excluir esta avaliação?')) return;
     try {
       await excluirPosVenda(id);
-      if (setMensagem) setMensagem('Avaliação excluída!');
+      if (setMensagem) setMensagem('Avaliação excluída com sucesso!');
       carregarDados();
     } catch (erro) {
       alert('Erro ao excluir: ' + erro.message);
@@ -75,22 +105,28 @@ export default function PosVenda({ setMensagem }) {
 
         <button
           className="btn btn-primary"
-          onClick={() => setMostrarForm(!mostrarForm)}
+          onClick={() => {
+            if (mostrarForm) cancelarForm();
+            else abrirNovo();
+          }}
         >
-          {mostrarForm ? 'Cancelar' : '+ Nova Avaliação'}
+          {mostrarForm ? 'Fechar Formulário' : '+ Nova Avaliação'}
         </button>
       </div>
 
       {mostrarForm && (
         <div className="form-card">
-          <h3 className="form-title">Registrar Feedback de Atendimento</h3>
+          <h3 className="form-title">
+            {editandoId ? `Editar Avaliação #${editandoId}` : 'Registrar Feedback de Atendimento'}
+          </h3>
           <form onSubmit={salvar}>
             <div className="form-group">
-              <label>Atendimento / Venda *</label>
+              <label>Atendimento / Venda {editandoId ? '(não editável)' : '*'}</label>
               <select
                 value={idVenda}
                 onChange={(e) => setIdVenda(e.target.value)}
-                required
+                disabled={!!editandoId}
+                required={!editandoId}
               >
                 <option value="">Selecione o atendimento...</option>
                 {vendas.map((v) => (
@@ -126,12 +162,12 @@ export default function PosVenda({ setMensagem }) {
               <button
                 type="button"
                 className="btn btn-secondary"
-                onClick={() => setMostrarForm(false)}
+                onClick={cancelarForm}
               >
                 Cancelar
               </button>
               <button type="submit" className="btn btn-primary">
-                Salvar Avaliação
+                {editandoId ? 'Atualizar Avaliação' : 'Salvar Avaliação'}
               </button>
             </div>
           </form>
@@ -141,6 +177,13 @@ export default function PosVenda({ setMensagem }) {
       <div className="table-card">
         <div className="table-header-box">
           <h3>Avaliações Registradas ({avaliacoes.length})</h3>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={abrirNovo}
+          >
+            + Adicionar
+          </button>
         </div>
         <div className="table-container">
           <table>
@@ -171,12 +214,22 @@ export default function PosVenda({ setMensagem }) {
                     </td>
                     <td>{item.comentario || '-'}</td>
                     <td>
-                      <button
-                        className="btn btn-danger btn-sm"
-                        onClick={() => remover(item.id)}
-                      >
-                        Excluir
-                      </button>
+                      <div className="acoes-coluna">
+                        <button
+                          type="button"
+                          className="btn-editar"
+                          onClick={() => iniciarEdicao(item)}
+                        >
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-danger btn-sm"
+                          onClick={() => remover(item.id)}
+                        >
+                          Excluir
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))

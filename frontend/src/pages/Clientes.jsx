@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { getClientes, criarCliente, excluirCliente } from '../services/api';
+import { getClientes, criarCliente, atualizarCliente, excluirCliente } from '../services/api';
 
 export default function Clientes({ setMensagem }) {
   const [clientes, setClientes] = useState([]);
   const [mostrarForm, setMostrarForm] = useState(false);
+  const [editandoId, setEditandoId] = useState(null);
   const [busca, setBusca] = useState('');
 
   const [nome, setNome] = useState('');
@@ -25,31 +26,70 @@ export default function Clientes({ setMensagem }) {
     }
   }
 
-  async function cadastrar(e) {
+  function abrirNovo() {
+    setEditandoId(null);
+    setNome('');
+    setCpf('');
+    setTelefone('');
+    setEmail('');
+    setPrefHorario('');
+    setMostrarForm(true);
+  }
+
+  function iniciarEdicao(c) {
+    setEditandoId(c.id_pessoa);
+    setNome(c.pessoa?.nome || '');
+    setCpf(c.pessoa?.cpf || '');
+    setTelefone(c.pessoa?.telefone || '');
+    setEmail(c.pessoa?.email || '');
+    setPrefHorario(c.pref_horario || '');
+    setMostrarForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function cancelarForm() {
+    setMostrarForm(false);
+    setEditandoId(null);
+    setNome('');
+    setCpf('');
+    setTelefone('');
+    setEmail('');
+    setPrefHorario('');
+  }
+
+  async function salvar(e) {
     e.preventDefault();
 
-    if (!nome.trim() || !cpf.trim()) {
-      alert('Nome e CPF são obrigatórios!');
+    if (!nome.trim()) {
+      alert('O nome é obrigatório!');
       return;
     }
 
     try {
-      await criarCliente({
-        nome: nome.trim(),
-        cpf: cpf.trim(),
-        telefone: telefone.trim(),
-        email: email.trim(),
-        pref_horario: prefHorario
-      });
+      if (editandoId) {
+        await atualizarCliente(editandoId, {
+          nome: nome.trim(),
+          telefone: telefone.trim(),
+          email: email.trim(),
+          pref_horario: prefHorario
+        });
+        if (setMensagem) setMensagem('Cliente atualizado com sucesso!');
+      } else {
+        if (!cpf.trim()) {
+          alert('O CPF é obrigatório para novo cadastro!');
+          return;
+        }
+        await criarCliente({
+          nome: nome.trim(),
+          cpf: cpf.trim(),
+          telefone: telefone.trim(),
+          email: email.trim(),
+          pref_horario: prefHorario
+        });
+        if (setMensagem) setMensagem('Cliente cadastrado com sucesso!');
+      }
 
-      setNome('');
-      setCpf('');
-      setTelefone('');
-      setEmail('');
-      setPrefHorario('');
-      setMostrarForm(false);
-
-      if (setMensagem) setMensagem('Cliente cadastrado com sucesso!');
+      cancelarForm();
       carregarClientes();
     } catch (erro) {
       alert('Erro ao salvar cliente: ' + erro.message);
@@ -80,7 +120,7 @@ export default function Clientes({ setMensagem }) {
       <div className="page-header">
         <div className="page-header-text">
           <h2>Clientes</h2>
-          <p>Cadastro e listagem de clientes da clínica</p>
+          <p>Cadastro, consulta e edição de clientes da clínica</p>
         </div>
 
         <div className="page-header-actions">
@@ -94,7 +134,7 @@ export default function Clientes({ setMensagem }) {
 
           <button
             className="btn btn-primary"
-            onClick={() => setMostrarForm(!mostrarForm)}
+            onClick={mostrarForm ? cancelarForm : abrirNovo}
           >
             {mostrarForm ? 'Cancelar' : '+ Novo Cliente'}
           </button>
@@ -103,8 +143,10 @@ export default function Clientes({ setMensagem }) {
 
       {mostrarForm && (
         <div className="form-card">
-          <h3 className="form-title">Cadastrar Novo Cliente</h3>
-          <form onSubmit={cadastrar}>
+          <h3 className="form-title">
+            {editandoId ? `Editar Cliente #${editandoId}` : 'Cadastrar Novo Cliente'}
+          </h3>
+          <form onSubmit={salvar}>
             <div className="form-grid-2">
               <div className="form-group">
                 <label>Nome Completo *</label>
@@ -118,13 +160,14 @@ export default function Clientes({ setMensagem }) {
               </div>
 
               <div className="form-group">
-                <label>CPF *</label>
+                <label>CPF {editandoId ? '(Não editável)' : '*'}</label>
                 <input
                   type="text"
                   value={cpf}
                   onChange={(e) => setCpf(e.target.value)}
                   placeholder="000.000.000-00"
-                  required
+                  disabled={!!editandoId}
+                  required={!editandoId}
                 />
               </div>
             </div>
@@ -168,12 +211,12 @@ export default function Clientes({ setMensagem }) {
               <button
                 type="button"
                 className="btn btn-secondary"
-                onClick={() => setMostrarForm(false)}
+                onClick={cancelarForm}
               >
                 Cancelar
               </button>
               <button type="submit" className="btn btn-primary">
-                Salvar Cliente
+                {editandoId ? 'Atualizar Cliente' : 'Salvar Cliente'}
               </button>
             </div>
           </form>
@@ -183,6 +226,9 @@ export default function Clientes({ setMensagem }) {
       <div className="table-card">
         <div className="table-header-box">
           <h3>Clientes Cadastrados ({clientesFiltrados.length})</h3>
+          <button className="btn btn-secondary btn-sm" onClick={abrirNovo}>
+            + Adicionar
+          </button>
         </div>
         <div className="table-container">
           <table>
@@ -212,12 +258,20 @@ export default function Clientes({ setMensagem }) {
                     <td>{c.pessoa?.email || '-'}</td>
                     <td>{c.pref_horario || '-'}</td>
                     <td>
-                      <button
-                        className="btn btn-danger btn-sm"
-                        onClick={() => remover(c.id_pessoa)}
-                      >
-                        Excluir
-                      </button>
+                      <div className="acoes-coluna">
+                        <button
+                          className="btn-editar"
+                          onClick={() => iniciarEdicao(c)}
+                        >
+                          Editar
+                        </button>
+                        <button
+                          className="btn-danger"
+                          onClick={() => remover(c.id_pessoa)}
+                        >
+                          Excluir
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))

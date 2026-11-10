@@ -245,13 +245,41 @@ body {
 
 .btn-danger {
   background-color: transparent;
-  border-color: transparent;
+  border: 1px solid transparent;
   color: #b91c1c;
   padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
 }
 
 .btn-danger:hover {
   background-color: var(--red-bg);
+}
+
+.btn-editar {
+  background-color: var(--primary-light);
+  border: 1px solid var(--border);
+  color: var(--primary-dark);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-editar:hover {
+  background-color: #eedcd4;
+  border-color: var(--primary);
+}
+
+.acoes-coluna {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .btn-sm {

@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { getColaboradores, criarColaborador, excluirColaborador } from '../services/api';
+import { getColaboradores, criarColaborador, atualizarColaborador, excluirColaborador } from '../services/api';
 
 export default function Colaboradores({ setMensagem }) {
   const [colaboradores, setColaboradores] = useState([]);
   const [mostrarForm, setMostrarForm] = useState(false);
+  const [editandoId, setEditandoId] = useState(null);
 
   const [nome, setNome] = useState('');
   const [cpf, setCpf] = useState('');
@@ -24,31 +25,70 @@ export default function Colaboradores({ setMensagem }) {
     }
   }
 
-  async function cadastrar(e) {
+  function abrirNovo() {
+    setEditandoId(null);
+    setNome('');
+    setCpf('');
+    setTelefone('');
+    setEspecializacao('');
+    setSalario('');
+    setMostrarForm(true);
+  }
+
+  function iniciarEdicao(colab) {
+    setEditandoId(colab.id_pessoa);
+    setNome(colab.pessoa?.nome || '');
+    setCpf(colab.pessoa?.cpf || '');
+    setTelefone(colab.pessoa?.telefone || '');
+    setEspecializacao(colab.especializacao || '');
+    setSalario(colab.salario != null ? String(colab.salario) : '');
+    setMostrarForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function cancelarForm() {
+    setMostrarForm(false);
+    setEditandoId(null);
+    setNome('');
+    setCpf('');
+    setTelefone('');
+    setEspecializacao('');
+    setSalario('');
+  }
+
+  async function salvar(e) {
     e.preventDefault();
 
-    if (!nome.trim() || !cpf.trim()) {
-      alert('Nome e CPF são obrigatórios!');
+    if (!nome.trim()) {
+      alert('O nome do profissional é obrigatório!');
       return;
     }
 
     try {
-      await criarColaborador({
-        nome: nome.trim(),
-        cpf: cpf.trim(),
-        telefone: telefone.trim(),
-        especializacao: especializacao.trim(),
-        salario: salario ? parseFloat(salario) : null
-      });
+      if (editandoId) {
+        await atualizarColaborador(editandoId, {
+          nome: nome.trim(),
+          telefone: telefone.trim(),
+          especializacao: especializacao.trim(),
+          salario: salario ? parseFloat(salario) : null
+        });
+        if (setMensagem) setMensagem('Colaborador atualizado com sucesso!');
+      } else {
+        if (!cpf.trim()) {
+          alert('O CPF é obrigatório para cadastrar um novo colaborador!');
+          return;
+        }
+        await criarColaborador({
+          nome: nome.trim(),
+          cpf: cpf.trim(),
+          telefone: telefone.trim(),
+          especializacao: especializacao.trim(),
+          salario: salario ? parseFloat(salario) : null
+        });
+        if (setMensagem) setMensagem('Colaborador cadastrado com sucesso!');
+      }
 
-      setNome('');
-      setCpf('');
-      setTelefone('');
-      setEspecializacao('');
-      setSalario('');
-      setMostrarForm(false);
-
-      if (setMensagem) setMensagem('Colaborador cadastrado com sucesso!');
+      cancelarForm();
       carregarColaboradores();
     } catch (erro) {
       alert('Erro ao salvar colaborador: ' + erro.message);
@@ -76,16 +116,21 @@ export default function Colaboradores({ setMensagem }) {
 
         <button
           className="btn btn-primary"
-          onClick={() => setMostrarForm(!mostrarForm)}
+          onClick={() => {
+            if (mostrarForm) cancelarForm();
+            else abrirNovo();
+          }}
         >
-          {mostrarForm ? 'Cancelar' : '+ Novo Colaborador'}
+          {mostrarForm ? 'Fechar Formulário' : '+ Novo Colaborador'}
         </button>
       </div>
 
       {mostrarForm && (
         <div className="form-card">
-          <h3 className="form-title">Cadastrar Novo Profissional</h3>
-          <form onSubmit={cadastrar}>
+          <h3 className="form-title">
+            {editandoId ? `Editar Colaborador #${editandoId}` : 'Cadastrar Novo Profissional'}
+          </h3>
+          <form onSubmit={salvar}>
             <div className="form-grid-2">
               <div className="form-group">
                 <label>Nome do Profissional *</label>
@@ -93,19 +138,20 @@ export default function Colaboradores({ setMensagem }) {
                   type="text"
                   value={nome}
                   onChange={(e) => setNome(e.target.value)}
-                  placeholder="Ex: Dra. Juliana"
+                  placeholder="Ex: Dra. Juliana Costa"
                   required
                 />
               </div>
 
               <div className="form-group">
-                <label>CPF *</label>
+                <label>CPF {editandoId ? '(não editável)' : '*'}</label>
                 <input
                   type="text"
                   value={cpf}
                   onChange={(e) => setCpf(e.target.value)}
                   placeholder="000.000.000-00"
-                  required
+                  disabled={!!editandoId}
+                  required={!editandoId}
                 />
               </div>
             </div>
@@ -147,12 +193,12 @@ export default function Colaboradores({ setMensagem }) {
               <button
                 type="button"
                 className="btn btn-secondary"
-                onClick={() => setMostrarForm(false)}
+                onClick={cancelarForm}
               >
                 Cancelar
               </button>
               <button type="submit" className="btn btn-primary">
-                Salvar Profissional
+                {editandoId ? 'Atualizar Profissional' : 'Salvar Profissional'}
               </button>
             </div>
           </form>
@@ -162,6 +208,13 @@ export default function Colaboradores({ setMensagem }) {
       <div className="table-card">
         <div className="table-header-box">
           <h3>Profissionais Cadastrados ({colaboradores.length})</h3>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={abrirNovo}
+          >
+            + Adicionar
+          </button>
         </div>
         <div className="table-container">
           <table>
@@ -195,12 +248,22 @@ export default function Colaboradores({ setMensagem }) {
                       </span>
                     </td>
                     <td>
-                      <button
-                        className="btn btn-danger btn-sm"
-                        onClick={() => remover(colab.id_pessoa)}
-                      >
-                        Excluir
-                      </button>
+                      <div className="acoes-coluna">
+                        <button
+                          type="button"
+                          className="btn-editar"
+                          onClick={() => iniciarEdicao(colab)}
+                        >
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-danger btn-sm"
+                          onClick={() => remover(colab.id_pessoa)}
+                        >
+                          Excluir
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))

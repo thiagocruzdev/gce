@@ -15,6 +15,7 @@ export default function Agendamentos({ setMensagem }) {
   const [colaboradores, setColaboradores] = useState([]);
   const [servicos, setServicos] = useState([]);
   const [mostrarForm, setMostrarForm] = useState(false);
+  const [editandoId, setEditandoId] = useState(null);
 
   const [idCliente, setIdCliente] = useState('');
   const [idColaborador, setIdColaborador] = useState('');
@@ -22,6 +23,7 @@ export default function Agendamentos({ setMensagem }) {
   const [dataMarcada, setDataMarcada] = useState(new Date().toISOString().split('T')[0]);
   const [horaInicio, setHoraInicio] = useState('09:00');
   const [observacao, setObservacao] = useState('');
+  const [status, setStatus] = useState('Confirmado');
 
   useEffect(() => {
     carregarTudo();
@@ -45,7 +47,44 @@ export default function Agendamentos({ setMensagem }) {
     }
   }
 
-  async function cadastrar(e) {
+  function abrirNovo() {
+    setEditandoId(null);
+    setIdCliente('');
+    setIdColaborador('');
+    setIdServico('');
+    setDataMarcada(new Date().toISOString().split('T')[0]);
+    setHoraInicio('09:00');
+    setObservacao('');
+    setStatus('Confirmado');
+    setMostrarForm(true);
+  }
+
+  function iniciarEdicao(a) {
+    setEditandoId(a.id);
+    setIdCliente(a.id_cliente != null ? String(a.id_cliente) : '');
+    setIdColaborador(a.id_colaborador != null ? String(a.id_colaborador) : '');
+    setIdServico(a.id_servico != null ? String(a.id_servico) : '');
+    setDataMarcada(a.data_marcada ? new Date(a.data_marcada).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
+    setHoraInicio(a.hora_inicio || '09:00');
+    setObservacao(a.observacao || '');
+    setStatus(a.status || 'Confirmado');
+    setMostrarForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function cancelarForm() {
+    setMostrarForm(false);
+    setEditandoId(null);
+    setIdCliente('');
+    setIdColaborador('');
+    setIdServico('');
+    setDataMarcada(new Date().toISOString().split('T')[0]);
+    setHoraInicio('09:00');
+    setObservacao('');
+    setStatus('Confirmado');
+  }
+
+  async function salvar(e) {
     e.preventDefault();
 
     if (!idCliente || !idColaborador || !idServico || !dataMarcada) {
@@ -54,26 +93,34 @@ export default function Agendamentos({ setMensagem }) {
     }
 
     try {
-      await criarAgendamento({
-        id_cliente: parseInt(idCliente),
-        id_colaborador: parseInt(idColaborador),
-        id_servico: parseInt(idServico),
-        data_marcada: dataMarcada,
-        hora_inicio: horaInicio,
-        observacao: observacao,
-        status: 'Confirmado'
-      });
+      if (editandoId) {
+        await atualizarAgendamento(editandoId, {
+          id_cliente: parseInt(idCliente),
+          id_colaborador: parseInt(idColaborador),
+          id_servico: parseInt(idServico),
+          data_marcada: dataMarcada,
+          hora_inicio: horaInicio,
+          observacao: observacao,
+          status: status
+        });
+        if (setMensagem) setMensagem('Agendamento atualizado com sucesso!');
+      } else {
+        await criarAgendamento({
+          id_cliente: parseInt(idCliente),
+          id_colaborador: parseInt(idColaborador),
+          id_servico: parseInt(idServico),
+          data_marcada: dataMarcada,
+          hora_inicio: horaInicio,
+          observacao: observacao,
+          status: status || 'Confirmado'
+        });
+        if (setMensagem) setMensagem('Agendamento cadastrado com sucesso!');
+      }
 
-      setIdCliente('');
-      setIdColaborador('');
-      setIdServico('');
-      setObservacao('');
-      setMostrarForm(false);
-
-      if (setMensagem) setMensagem('Agendamento cadastrado com sucesso!');
+      cancelarForm();
       carregarTudo();
     } catch (erro) {
-      alert('Erro ao agendar: ' + erro.message);
+      alert('Erro ao salvar agendamento: ' + erro.message);
     }
   }
 
@@ -91,7 +138,7 @@ export default function Agendamentos({ setMensagem }) {
     if (!window.confirm('Deseja excluir este agendamento?')) return;
     try {
       await excluirAgendamento(id);
-      if (setMensagem) setMensagem('Agendamento excluído!');
+      if (setMensagem) setMensagem('Agendamento excluído com sucesso!');
       carregarTudo();
     } catch (erro) {
       alert('Erro ao excluir: ' + erro.message);
@@ -108,16 +155,21 @@ export default function Agendamentos({ setMensagem }) {
 
         <button
           className="btn btn-primary"
-          onClick={() => setMostrarForm(!mostrarForm)}
+          onClick={() => {
+            if (mostrarForm) cancelarForm();
+            else abrirNovo();
+          }}
         >
-          {mostrarForm ? 'Cancelar' : '+ Novo Agendamento'}
+          {mostrarForm ? 'Fechar Formulário' : '+ Novo Agendamento'}
         </button>
       </div>
 
       {mostrarForm && (
         <div className="form-card">
-          <h3 className="form-title">Marcar Horário</h3>
-          <form onSubmit={cadastrar}>
+          <h3 className="form-title">
+            {editandoId ? `Editar Agendamento #${editandoId}` : 'Marcar Novo Horário'}
+          </h3>
+          <form onSubmit={salvar}>
             <div className="form-group">
               <label>Cliente *</label>
               <select
@@ -136,22 +188,6 @@ export default function Agendamentos({ setMensagem }) {
 
             <div className="form-grid-2">
               <div className="form-group">
-                <label>Serviço / Procedimento *</label>
-                <select
-                  value={idServico}
-                  onChange={(e) => setIdServico(e.target.value)}
-                  required
-                >
-                  <option value="">Selecione o serviço...</option>
-                  {servicos.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.nome} (R$ {Number(s.valor || 0).toFixed(2)})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-group">
                 <label>Profissional *</label>
                 <select
                   value={idColaborador}
@@ -161,7 +197,23 @@ export default function Agendamentos({ setMensagem }) {
                   <option value="">Selecione o profissional...</option>
                   {colaboradores.map((colab) => (
                     <option key={colab.id_pessoa} value={colab.id_pessoa}>
-                      {colab.pessoa?.nome}
+                      {colab.pessoa?.nome} ({colab.especializacao || 'Geral'})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>Procedimento / Serviço *</label>
+                <select
+                  value={idServico}
+                  onChange={(e) => setIdServico(e.target.value)}
+                  required
+                >
+                  <option value="">Selecione o serviço...</option>
+                  {servicos.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.nome} — R$ {Number(s.valor || 0).toFixed(2)}
                     </option>
                   ))}
                 </select>
@@ -180,7 +232,7 @@ export default function Agendamentos({ setMensagem }) {
               </div>
 
               <div className="form-group">
-                <label>Horário *</label>
+                <label>Horário de Início *</label>
                 <input
                   type="time"
                   value={horaInicio}
@@ -190,13 +242,25 @@ export default function Agendamentos({ setMensagem }) {
               </div>
             </div>
 
+            {editandoId && (
+              <div className="form-group">
+                <label>Status do Agendamento</label>
+                <select value={status} onChange={(e) => setStatus(e.target.value)}>
+                  <option value="Confirmado">Confirmado</option>
+                  <option value="Pendente">Pendente</option>
+                  <option value="Concluído">Concluído</option>
+                  <option value="Cancelado">Cancelado</option>
+                </select>
+              </div>
+            )}
+
             <div className="form-group">
               <label>Observações</label>
               <textarea
                 rows="2"
                 value={observacao}
                 onChange={(e) => setObservacao(e.target.value)}
-                placeholder="Ex: Primeira consulta, cuidados específicos..."
+                placeholder="Preferências, recomendações ou observações clínicas..."
               />
             </div>
 
@@ -204,12 +268,12 @@ export default function Agendamentos({ setMensagem }) {
               <button
                 type="button"
                 className="btn btn-secondary"
-                onClick={() => setMostrarForm(false)}
+                onClick={cancelarForm}
               >
                 Cancelar
               </button>
               <button type="submit" className="btn btn-primary">
-                Confirmar Agendamento
+                {editandoId ? 'Atualizar Agendamento' : 'Confirmar Agendamento'}
               </button>
             </div>
           </form>
@@ -219,6 +283,13 @@ export default function Agendamentos({ setMensagem }) {
       <div className="table-card">
         <div className="table-header-box">
           <h3>Horários Agendados ({agendamentos.length})</h3>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={abrirNovo}
+          >
+            + Adicionar
+          </button>
         </div>
         <div className="table-container">
           <table>
@@ -267,12 +338,22 @@ export default function Agendamentos({ setMensagem }) {
                       </select>
                     </td>
                     <td>
-                      <button
-                        className="btn btn-danger btn-sm"
-                        onClick={() => remover(a.id)}
-                      >
-                        Excluir
-                      </button>
+                      <div className="acoes-coluna">
+                        <button
+                          type="button"
+                          className="btn-editar"
+                          onClick={() => iniciarEdicao(a)}
+                        >
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-danger btn-sm"
+                          onClick={() => remover(a.id)}
+                        >
+                          Excluir
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
