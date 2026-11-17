@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { getServicos, getServico, criarServico, atualizarServico, excluirServico } from '../services/api';
 
 export default function Servicos({ mode = 'list', setMensagem }) {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { ehCliente } = useAuth();
 
   const [servicos, setServicos] = useState([]);
   const [busca, setBusca] = useState('');
@@ -17,6 +19,10 @@ export default function Servicos({ mode = 'list', setMensagem }) {
   const [duracao, setDuracao] = useState('60');
 
   useEffect(() => {
+    if (ehCliente && (mode === 'view' || mode === 'edit')) {
+      navigate('/servicos');
+      return;
+    }
     if (mode === 'list') {
       carregarServicos();
     } else if ((mode === 'view' || mode === 'edit') && id) {
@@ -24,7 +30,7 @@ export default function Servicos({ mode = 'list', setMensagem }) {
     } else if (mode === 'edit' && !id) {
       limparCampos();
     }
-  }, [mode, id]);
+  }, [mode, id, ehCliente]);
 
   async function carregarServicos() {
     try {
@@ -286,12 +292,14 @@ export default function Servicos({ mode = 'list', setMensagem }) {
           <p>Procedimentos e tratamentos disponíveis na clínica</p>
         </div>
 
-        <button
-          className="btn btn-primary"
-          onClick={() => navigate('/servicos/novo')}
-        >
-          + Novo Serviço
-        </button>
+        {!ehCliente && (
+          <button
+            className="btn btn-primary"
+            onClick={() => navigate('/servicos/novo')}
+          >
+            + Novo Serviço
+          </button>
+        )}
       </div>
 
       <div className="table-card">
@@ -306,13 +314,15 @@ export default function Servicos({ mode = 'list', setMensagem }) {
               onChange={(e) => setBusca(e.target.value)}
             />
           </div>
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            onClick={() => navigate('/servicos/novo')}
-          >
-            + Adicionar
-          </button>
+          {!ehCliente && (
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => navigate('/servicos/novo')}
+            >
+              + Adicionar
+            </button>
+          )}
         </div>
         <div className="table-container">
           <table>
@@ -323,13 +333,13 @@ export default function Servicos({ mode = 'list', setMensagem }) {
                 <th>Descrição</th>
                 <th>Duração</th>
                 <th>Valor</th>
-                <th>Ações</th>
+                {!ehCliente && <th>Ações</th>}
               </tr>
             </thead>
             <tbody>
               {servicosFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="table-empty">
+                  <td colSpan={ehCliente ? 5 : 6} className="table-empty">
                     {carregando ? 'Carregando serviços...' : 'Nenhum serviço cadastrado ainda.'}
                   </td>
                 </tr>
@@ -338,41 +348,47 @@ export default function Servicos({ mode = 'list', setMensagem }) {
                   <tr key={s.id}>
                     <td>#{s.id}</td>
                     <td>
-                      <strong
-                        style={{ cursor: 'pointer', color: 'var(--primary)' }}
-                        onClick={() => navigate(`/servicos/${s.id}`)}
-                      >
-                        {s.nome}
-                      </strong>
+                      {ehCliente ? (
+                        <strong>{s.nome}</strong>
+                      ) : (
+                        <strong
+                          style={{ cursor: 'pointer', color: 'var(--primary)' }}
+                          onClick={() => navigate(`/servicos/${s.id}`)}
+                        >
+                          {s.nome}
+                        </strong>
+                      )}
                     </td>
                     <td>{s.descricao || '-'}</td>
                     <td>{s.duracao_minutos ? `${s.duracao_minutos} min` : '-'}</td>
                     <td><strong>R$ {Number(s.valor || 0).toFixed(2)}</strong></td>
-                    <td>
-                      <div className="acoes-coluna">
-                        <button
-                          type="button"
-                          className="btn-ver"
-                          onClick={() => navigate(`/servicos/${s.id}`)}
-                        >
-                          Ver
-                        </button>
-                        <button
-                          type="button"
-                          className="btn-editar"
-                          onClick={() => navigate(`/servicos/${s.id}/editar`)}
-                        >
-                          Editar
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-danger btn-sm"
-                          onClick={() => remover(s.id)}
-                        >
-                          Excluir
-                        </button>
-                      </div>
-                    </td>
+                    {!ehCliente && (
+                      <td>
+                        <div className="acoes-coluna">
+                          <button
+                            type="button"
+                            className="btn-ver"
+                            onClick={() => navigate(`/servicos/${s.id}`)}
+                          >
+                            Ver
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-editar"
+                            onClick={() => navigate(`/servicos/${s.id}/editar`)}
+                          >
+                            Editar
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-danger btn-sm"
+                            onClick={() => remover(s.id)}
+                          >
+                            Excluir
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))
               )}
