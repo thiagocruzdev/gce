@@ -504,31 +504,21 @@ tbody tr:hover {
    =================================================================== */
 
 .badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px 10px;
-  border-radius: 20px;
-  font-size: 11.5px;
-  font-weight: 600;
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 500;
+  color: inherit;
 }
 
 .badge-confirmado,
 .badge-concluido,
 .badge-pago,
-.badge-ativo {
-  background: var(--green-bg);
-  color: var(--green-text);
-}
-
-.badge-pendente {
-  background: var(--yellow-bg);
-  color: var(--yellow-text);
-}
-
+.badge-ativo,
+.badge-pendente,
 .badge-cancelado,
 .badge-inativo {
-  background: var(--red-bg);
-  color: var(--red-text);
+  background: transparent;
+  color: inherit;
 }
 
 /* ===================================================================

@@ -200,11 +200,7 @@ export default function Clientes({ mode = 'list', setMensagem }) {
             <div className="view-field">
               <span className="view-label">Preferência de Horário</span>
               <span className="view-value">
-                {clienteAtual?.pref_horario ? (
-                  <span className="badge badge-confirmado">{clienteAtual.pref_horario}</span>
-                ) : (
-                  'Sem preferência'
-                )}
+                {clienteAtual?.pref_horario || 'Sem preferência'}
               </span>
             </div>
 
@@ -419,13 +415,7 @@ export default function Clientes({ mode = 'list', setMensagem }) {
                     <td>{c.pessoa?.cpf}</td>
                     <td>{c.pessoa?.telefone || '-'}</td>
                     <td>{c.pessoa?.email || '-'}</td>
-                    <td>
-                      {c.pref_horario ? (
-                        <span className="badge badge-confirmado">{c.pref_horario}</span>
-                      ) : (
-                        '-'
-                      )}
-                    </td>
+                    <td>{c.pref_horario || '-'}</td>
                     <td>
                       <div className="acoes-coluna">
                         <button

@@ -175,7 +175,7 @@ export default function Servicos({ mode = 'list', setMensagem }) {
             <div className="view-field">
               <span className="view-label">Status no Catálogo</span>
               <span className="view-value">
-                <span className="badge badge-ativo">{servicoAtual?.status || 'Ativo'}</span>
+                {servicoAtual?.status !== false ? 'Ativo' : 'Inativo'}
               </span>
             </div>
 

@@ -183,7 +183,7 @@ export default function Colaboradores({ mode = 'list', setMensagem }) {
             <div className="view-field">
               <span className="view-label">Status da Conta</span>
               <span className="view-value">
-                <span className="badge badge-ativo">{colabAtual?.status || 'Ativo'}</span>
+                {colabAtual?.status || 'Ativo'}
               </span>
             </div>
           </div>
@@ -366,11 +366,7 @@ export default function Colaboradores({ mode = 'list', setMensagem }) {
                     <td>{colab.especializacao || '-'}</td>
                     <td>{colab.pessoa?.telefone || '-'}</td>
                     <td>{colab.salario ? 'R$ ' + Number(colab.salario).toFixed(2) : '-'}</td>
-                    <td>
-                      <span className="badge badge-ativo">
-                        {colab.status || 'Ativo'}
-                      </span>
-                    </td>
+                    <td>{colab.status || 'Ativo'}</td>
                     <td>
                       <div className="acoes-coluna">
                         <button

@@ -329,9 +329,7 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
             <div className="view-field">
               <span className="view-label">Status</span>
               <span className="view-value">
-                <span className={`badge badge-${(agendamentoAtual?.status || '').toLowerCase()}`}>
-                  {agendamentoAtual?.status || 'Confirmado'}
-                </span>
+                {agendamentoAtual?.status || 'Confirmado'}
               </span>
             </div>
           </div>
@@ -668,9 +666,7 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
                           <option value="Cancelado">Cancelado</option>
                         </select>
                       ) : (
-                        <span className={`badge badge-${(a.status || '').toLowerCase()}`}>
-                          {a.status || 'Confirmado'}
-                        </span>
+                        a.status || 'Confirmado'
                       )}
                     </td>
                     <td>

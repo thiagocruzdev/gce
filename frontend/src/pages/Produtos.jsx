@@ -268,8 +268,8 @@ export default function Produtos({ mode = 'list', setMensagem }) {
 
             <div className="view-field">
               <span className="view-label">Estoque Atual</span>
-              <span className="view-value" style={{ color: estoqueBaixo ? '#c81e1e' : 'inherit' }}>
-                {produtoAtual?.qntd} unidades {estoqueBaixo && '(Abaixo do mínimo!)'}
+              <span className="view-value">
+                {produtoAtual?.qntd} unidades {estoqueBaixo && '(Abaixo do mínimo)'}
               </span>
             </div>
 
@@ -281,7 +281,7 @@ export default function Produtos({ mode = 'list', setMensagem }) {
             <div className="view-field">
               <span className="view-label">Status do Produto</span>
               <span className="view-value">
-                <span className="badge badge-ativo">{produtoAtual?.status || 'Ativo'}</span>
+                {produtoAtual?.status !== false ? 'Ativo' : 'Inativo'}
               </span>
             </div>
 
@@ -551,9 +551,7 @@ export default function Produtos({ mode = 'list', setMensagem }) {
                         </strong>
                       </td>
                       <td>
-                        <strong style={{ color: estoqueBaixo ? '#c81e1e' : 'inherit' }}>
-                          {p.qntd} unid.
-                        </strong>
+                        <strong>{p.qntd} unid.</strong>
                       </td>
                       <td>{p.qntd_min} unid.</td>
                       <td>{p.valor_custo ? `R$ ${Number(p.valor_custo).toFixed(2)}` : '-'}</td>

@@ -265,7 +265,7 @@ export default function Vendas({ mode = 'list', setMensagem }) {
             <div className="view-field">
               <span className="view-label">Status</span>
               <span className="view-value">
-                <span className="badge badge-pago">{vendaAtual?.status || 'Pago'}</span>
+                {vendaAtual?.status || 'Pago'}
               </span>
             </div>
           </div>
@@ -556,11 +556,7 @@ export default function Vendas({ mode = 'list', setMensagem }) {
                     </td>
                     <td>{v.colaborador?.pessoa?.nome || 'Profissional'}</td>
                     <td><strong>R$ {Number(v.valor_final || 0).toFixed(2)}</strong></td>
-                    <td>
-                      <span className="badge badge-pago">
-                        {v.status || 'Pago'}
-                      </span>
-                    </td>
+                    <td>{v.status || 'Pago'}</td>
                     <td>
                       <div className="acoes-coluna">
                         <button

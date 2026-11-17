@@ -125,11 +125,7 @@ export default function Dashboard() {
                       <td>{item.cliente?.pessoa?.nome || 'Cliente'}</td>
                       <td>{item.servico?.nome || 'Serviço'}</td>
                       <td>{item.colaborador?.pessoa?.nome || 'Profissional'}</td>
-                      <td>
-                        <span className={`badge badge-${statusClass}`}>
-                          {item.status || 'Pendente'}
-                        </span>
-                      </td>
+                      <td>{item.status || 'Pendente'}</td>
                       <td>
                         <button
                           className="btn-ver"
@@ -179,11 +175,7 @@ export default function Dashboard() {
                       <td>{v.cliente?.pessoa?.nome || 'Cliente'}</td>
                       <td>{v.colaborador?.pessoa?.nome || 'Profissional'}</td>
                       <td><strong>R$ {Number(v.valor_final || 0).toFixed(2)}</strong></td>
-                      <td>
-                        <span className="badge badge-pago">
-                          {v.status || 'Pago'}
-                        </span>
-                      </td>
+                      <td>{v.status || 'Pago'}</td>
                       <td>
                         <button
                           className="btn-ver"
