@@ -122,7 +122,14 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
     if (!idCliente) novosErros.idCliente = 'Selecione o cliente';
     if (!idColaborador) novosErros.idColaborador = 'Selecione o colaborador';
     if (!idServico) novosErros.idServico = 'Selecione o serviço';
-    if (!dataMarcada) novosErros.dataMarcada = 'Informe a data';
+    if (!dataMarcada) {
+      novosErros.dataMarcada = 'Informe a data';
+    } else {
+      const hojeStr = new Date().toISOString().split('T')[0];
+      if (dataMarcada < hojeStr) {
+        novosErros.dataMarcada = 'A data não pode ser anterior a hoje';
+      }
+    }
     if (!horaInicio) novosErros.horaInicio = 'Informe o horário';
 
     setErrosForm(novosErros);
@@ -404,6 +411,7 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
                 <label>Data *</label>
                 <input
                   type="date"
+                  min={new Date().toISOString().split('T')[0]}
                   value={dataMarcada}
                   onChange={(e) => setDataMarcada(e.target.value)}
                   style={{ borderColor: errosForm.dataMarcada ? 'var(--red-text)' : undefined }}

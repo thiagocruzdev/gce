@@ -41,6 +41,16 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const { nome, cpf, telefone, email, dt_nascimento } = req.body;
+
+    if (cpf) {
+      const pessoaExistente = await prisma.pessoa.findUnique({
+        where: { cpf }
+      });
+      if (pessoaExistente) {
+        return res.status(400).json({ error: 'Já existe uma pessoa cadastrada com este CPF' });
+      }
+    }
+
     const novaPessoa = await prisma.pessoa.create({
       data: {
         nome,
@@ -60,6 +70,19 @@ router.put('/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const { nome, cpf, telefone, email, dt_nascimento } = req.body;
+
+    if (cpf) {
+      const pessoaExistente = await prisma.pessoa.findFirst({
+        where: {
+          cpf,
+          id: { not: id }
+        }
+      });
+      if (pessoaExistente) {
+        return res.status(400).json({ error: 'Já existe uma pessoa cadastrada com este CPF' });
+      }
+    }
+
     const pessoaAtualizada = await prisma.pessoa.update({
       where: { id },
       data: {

@@ -44,12 +44,28 @@ router.post('/', async (req, res) => {
     const qtd = parseFloat(quantidade);
     const prodId = parseInt(id_produto);
 
+    if (!id_produto || isNaN(prodId)) {
+      return res.status(400).json({ error: 'Selecione um produto' });
+    }
+
+    if (!tipo || !['ENTRADA', 'SAIDA', 'AJUSTE'].includes(tipo)) {
+      return res.status(400).json({ error: 'Tipo de movimentação inválido' });
+    }
+
+    if (isNaN(qtd) || qtd <= 0) {
+      return res.status(400).json({ error: 'A quantidade deve ser maior que zero' });
+    }
+
     const produto = await prisma.produto.findUnique({
       where: { id: prodId }
     });
 
     if (!produto) {
       return res.status(404).json({ error: 'Produto não encontrado' });
+    }
+
+    if (tipo === 'SAIDA' && produto.qntd < qtd) {
+      return res.status(400).json({ error: 'Quantidade insuficiente em estoque' });
     }
 
     let novaQntd = produto.qntd;

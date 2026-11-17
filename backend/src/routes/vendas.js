@@ -129,9 +129,47 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+    const itens = await prisma.vendaItem.findMany({
+      where: { id_venda: id }
+    });
+
+    for (const item of itens) {
+      if (item.tipo === 'PRODUTO' && item.id_produto) {
+        const produto = await prisma.produto.findUnique({
+          where: { id: item.id_produto }
+        });
+        if (produto) {
+          await prisma.produto.update({
+            where: { id: item.id_produto },
+            data: { qntd: produto.qntd + item.quantidade }
+          });
+        }
+      }
+    }
+
+    const idsItens = itens.map(i => i.id);
+    if (idsItens.length > 0) {
+      await prisma.estoqueMovimentacao.deleteMany({
+        where: { id_venda_item: { in: idsItens } }
+      });
+    }
+
+    await prisma.vendaItem.deleteMany({
+      where: { id_venda: id }
+    });
+
+    await prisma.vendaPagamento.deleteMany({
+      where: { id_venda: id }
+    });
+
+    await prisma.posVenda.deleteMany({
+      where: { id_venda: id }
+    });
+
     await prisma.venda.delete({
       where: { id }
     });
+
     res.json({ message: 'Venda removida com sucesso' });
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -144,9 +182,37 @@ router.post('/:id/itens', async (req, res) => {
     const { tipo, id_produto, id_servico, id_colaborador, quantidade, valor_unitario, valor_desconto } = req.body;
 
     const qtd = quantidade ? parseFloat(quantidade) : 1;
+    if (isNaN(qtd) || qtd <= 0) {
+      return res.status(400).json({ error: 'Quantidade deve ser maior que zero' });
+    }
+
     const unitario = parseFloat(valor_unitario);
+    if (isNaN(unitario) || unitario < 0) {
+      return res.status(400).json({ error: 'Valor unitário inválido' });
+    }
+
     const desconto = valor_desconto ? parseFloat(valor_desconto) : 0;
     const totalItem = (qtd * unitario) - desconto;
+
+    if (tipo === 'PRODUTO') {
+      if (!id_produto) {
+        return res.status(400).json({ error: 'Produto não informado' });
+      }
+      const produto = await prisma.produto.findUnique({
+        where: { id: parseInt(id_produto) }
+      });
+      if (!produto) {
+        return res.status(404).json({ error: 'Produto não encontrado' });
+      }
+      if (produto.qntd < qtd) {
+        return res.status(400).json({ error: 'Quantidade insuficiente em estoque' });
+      }
+
+      await prisma.produto.update({
+        where: { id: parseInt(id_produto) },
+        data: { qntd: produto.qntd - qtd }
+      });
+    }
 
     const novoItem = await prisma.vendaItem.create({
       data: {
@@ -162,6 +228,19 @@ router.post('/:id/itens', async (req, res) => {
       }
     });
 
+    if (tipo === 'PRODUTO') {
+      await prisma.estoqueMovimentacao.create({
+        data: {
+          id_produto: parseInt(id_produto),
+          id_venda_item: novoItem.id,
+          tipo: 'SAIDA',
+          quantidade: qtd,
+          motivo: `Venda #${idVenda}`,
+          data: new Date()
+        }
+      });
+    }
+
     const itensVenda = await prisma.vendaItem.findMany({
       where: { id_venda: idVenda }
     });
@@ -169,7 +248,7 @@ router.post('/:id/itens', async (req, res) => {
     const somaItens = itensVenda.reduce((acc, item) => acc + item.valor_total, 0);
 
     const venda = await prisma.venda.findUnique({ where: { id: idVenda } });
-    const valorDescontoVenda = venda.valor_desconto || 0;
+    const valorDescontoVenda = venda ? (venda.valor_desconto || 0) : 0;
 
     await prisma.venda.update({
       where: { id: idVenda },
@@ -197,6 +276,29 @@ router.delete('/itens/:id', async (req, res) => {
     }
 
     const idVenda = item.id_venda;
+
+    if (item.tipo === 'PRODUTO' && item.id_produto) {
+      const produto = await prisma.produto.findUnique({
+        where: { id: item.id_produto }
+      });
+      if (produto) {
+        await prisma.produto.update({
+          where: { id: item.id_produto },
+          data: { qntd: produto.qntd + item.quantidade }
+        });
+
+        await prisma.estoqueMovimentacao.create({
+          data: {
+            id_produto: item.id_produto,
+            id_venda_item: null,
+            tipo: 'ENTRADA',
+            quantidade: item.quantidade,
+            motivo: `Cancelamento de item na Venda #${idVenda}`,
+            data: new Date()
+          }
+        });
+      }
+    }
 
     await prisma.vendaItem.delete({
       where: { id: idItem }
