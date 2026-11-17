@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getClientes, getAgendamentos, getServicos, getVendas } from '../services/api';
 
-export default function Dashboard({ setTelaAtual }) {
+export default function Dashboard() {
+  const navigate = useNavigate();
   const [totalClientes, setTotalClientes] = useState(0);
   const [totalAgendamentos, setTotalAgendamentos] = useState(0);
   const [totalServicos, setTotalServicos] = useState(0);
@@ -45,40 +47,38 @@ export default function Dashboard({ setTelaAtual }) {
         </div>
       </div>
 
-      {/* Cards de Métricas */}
       <div className="metric-cards-grid">
-        <div className="metric-card">
+        <div className="metric-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/clientes')}>
           <div className="metric-card-label">Clientes Cadastrados</div>
           <div className="metric-card-value">{totalClientes}</div>
-          <div className="metric-card-sub">Base ativa de clientes</div>
+          <div className="metric-card-sub">Base ativa de clientes &rarr;</div>
         </div>
 
-        <div className="metric-card">
+        <div className="metric-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/agendamentos')}>
           <div className="metric-card-label">Agendamentos</div>
           <div className="metric-card-value">{totalAgendamentos}</div>
-          <div className="metric-card-sub">Horários registrados</div>
+          <div className="metric-card-sub">Horários registrados &rarr;</div>
         </div>
 
-        <div className="metric-card">
+        <div className="metric-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/servicos')}>
           <div className="metric-card-label">Serviços Oferecidos</div>
           <div className="metric-card-value">{totalServicos}</div>
-          <div className="metric-card-sub">Procedimentos no catálogo</div>
+          <div className="metric-card-sub">Procedimentos no catálogo &rarr;</div>
         </div>
 
-        <div className="metric-card">
+        <div className="metric-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/vendas')}>
           <div className="metric-card-label">Faturamento Total</div>
           <div className="metric-card-value">
             R$ {Number(totalVendas).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </div>
-          <div className="metric-card-sub">Receita acumulada</div>
+          <div className="metric-card-sub">Receita acumulada &rarr;</div>
         </div>
       </div>
 
-      {/* Tabela de Próximos Agendamentos */}
       <div className="table-card">
         <div className="table-header-box">
           <h3>Próximos Agendamentos</h3>
-          <button className="btn btn-secondary btn-sm" onClick={() => setTelaAtual('agendamentos')}>
+          <button className="btn btn-secondary btn-sm" onClick={() => navigate('/agendamentos')}>
             Ver todos
           </button>
         </div>
@@ -92,12 +92,13 @@ export default function Dashboard({ setTelaAtual }) {
                 <th>Serviço</th>
                 <th>Profissional</th>
                 <th>Status</th>
+                <th>Ações</th>
               </tr>
             </thead>
             <tbody>
               {ultimosAgendamentos.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="table-empty">Nenhum agendamento registrado ainda.</td>
+                  <td colSpan="7" className="table-empty">Nenhum agendamento registrado ainda.</td>
                 </tr>
               ) : (
                 ultimosAgendamentos.map((item) => {
@@ -114,6 +115,14 @@ export default function Dashboard({ setTelaAtual }) {
                           {item.status || 'Pendente'}
                         </span>
                       </td>
+                      <td>
+                        <button
+                          className="btn-ver"
+                          onClick={() => navigate(`/agendamentos/${item.id}`)}
+                        >
+                          Ver
+                        </button>
+                      </td>
                     </tr>
                   );
                 })
@@ -123,11 +132,10 @@ export default function Dashboard({ setTelaAtual }) {
         </div>
       </div>
 
-      {/* Tabela de Últimas Vendas */}
       <div className="table-card">
         <div className="table-header-box">
           <h3>Últimas Vendas &amp; Faturamentos</h3>
-          <button className="btn btn-secondary btn-sm" onClick={() => setTelaAtual('vendas')}>
+          <button className="btn btn-secondary btn-sm" onClick={() => navigate('/vendas')}>
             Ver todas
           </button>
         </div>
@@ -140,12 +148,13 @@ export default function Dashboard({ setTelaAtual }) {
                 <th>Profissional</th>
                 <th>Valor Total</th>
                 <th>Status</th>
+                <th>Ações</th>
               </tr>
             </thead>
             <tbody>
               {ultimasVendas.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="table-empty">Nenhuma venda registrada ainda.</td>
+                  <td colSpan="6" className="table-empty">Nenhuma venda registrada ainda.</td>
                 </tr>
               ) : (
                 ultimasVendas.map((v) => (
@@ -158,6 +167,14 @@ export default function Dashboard({ setTelaAtual }) {
                       <span className="badge badge-pago">
                         {v.status || 'Pago'}
                       </span>
+                    </td>
+                    <td>
+                      <button
+                        className="btn-ver"
+                        onClick={() => navigate(`/vendas/${v.id}`)}
+                      >
+                        Ver
+                      </button>
                     </td>
                   </tr>
                 ))

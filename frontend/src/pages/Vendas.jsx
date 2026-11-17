@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   getVendas,
+  getVenda,
   getClientes,
   getColaboradores,
   getServicos,
@@ -12,14 +14,17 @@ import {
   excluirVenda
 } from '../services/api';
 
-export default function Vendas({ setMensagem }) {
+export default function Vendas({ mode = 'list', setMensagem }) {
+  const navigate = useNavigate();
+  const { id } = useParams();
+
   const [vendas, setVendas] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [colaboradores, setColaboradores] = useState([]);
   const [servicos, setServicos] = useState([]);
   const [produtos, setProdutos] = useState([]);
-  const [mostrarForm, setMostrarForm] = useState(false);
-  const [editandoId, setEditandoId] = useState(null);
+  const [carregando, setCarregando] = useState(false);
+  const [vendaAtual, setVendaAtual] = useState(null);
 
   const [idCliente, setIdCliente] = useState('');
   const [idColaborador, setIdColaborador] = useState('');
@@ -30,56 +35,71 @@ export default function Vendas({ setMensagem }) {
   const [valorCustomizado, setValorCustomizado] = useState('');
   const [statusVenda, setStatusVenda] = useState('Pago');
 
-  useEffect(() => {
-    carregarTudo();
-  }, []);
+  // Estados dos filtros da listagem
+  const [busca, setBusca] = useState('');
+  const [filtroStatus, setFiltroStatus] = useState('');
+  const [filtroDataInicio, setFiltroDataInicio] = useState('');
+  const [filtroDataFim, setFiltroDataFim] = useState('');
 
-  async function carregarTudo() {
+  useEffect(() => {
+    carregarOpcoes();
+    if (mode === 'list') {
+      carregarVendas();
+    } else if ((mode === 'view' || mode === 'edit') && id) {
+      carregarDetalhe(id);
+    } else if (mode === 'edit' && !id) {
+      limparCampos();
+    }
+  }, [mode, id]);
+
+  async function carregarOpcoes() {
     try {
-      const [listaVendas, listaClientes, listaColab, listaServicos, listaProdutos] = await Promise.all([
-        getVendas().catch(() => []),
+      const [c, colab, s, p] = await Promise.all([
         getClientes().catch(() => []),
         getColaboradores().catch(() => []),
         getServicos().catch(() => []),
         getProdutos().catch(() => [])
       ]);
-
-      setVendas(listaVendas || []);
-      setClientes(listaClientes || []);
-      setColaboradores(listaColab || []);
-      setServicos(listaServicos || []);
-      setProdutos(listaProdutos || []);
-    } catch (erro) {
-      console.log('Erro ao carregar vendas:', erro);
+      setClientes(c || []);
+      setColaboradores(colab || []);
+      setServicos(s || []);
+      setProdutos(p || []);
+    } catch (e) {
+      console.log('Erro ao carregar opções:', e);
     }
   }
 
-  function abrirNovo() {
-    setEditandoId(null);
-    setIdCliente('');
-    setIdColaborador('');
-    setTipoItem('SERVICO');
-    setItemId('');
-    setQuantidade('1');
-    setFormaPagamento('PIX');
-    setValorCustomizado('');
-    setStatusVenda('Pago');
-    setMostrarForm(true);
+  async function carregarVendas() {
+    try {
+      setCarregando(true);
+      const dados = await getVendas();
+      setVendas(dados || []);
+    } catch (erro) {
+      console.log('Erro ao carregar vendas:', erro);
+    } finally {
+      setCarregando(false);
+    }
   }
 
-  function iniciarEdicao(v) {
-    setEditandoId(v.id);
-    setIdCliente(v.id_cliente != null ? String(v.id_cliente) : '');
-    setIdColaborador(v.id_colaborador != null ? String(v.id_colaborador) : '');
-    setValorCustomizado(v.valor_final != null ? String(v.valor_final) : '');
-    setStatusVenda(v.status || 'Pago');
-    setMostrarForm(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  async function carregarDetalhe(idVenda) {
+    try {
+      setCarregando(true);
+      const v = await getVenda(idVenda);
+      setVendaAtual(v);
+      setIdCliente(v.id_cliente != null ? String(v.id_cliente) : '');
+      setIdColaborador(v.id_colaborador != null ? String(v.id_colaborador) : '');
+      setValorCustomizado(v.valor_final != null ? String(v.valor_final) : '');
+      setStatusVenda(v.status || 'Pago');
+    } catch (erro) {
+      alert('Erro ao carregar venda: ' + erro.message);
+      navigate('/vendas');
+    } finally {
+      setCarregando(false);
+    }
   }
 
-  function cancelarForm() {
-    setMostrarForm(false);
-    setEditandoId(null);
+  function limparCampos() {
+    setVendaAtual(null);
     setIdCliente('');
     setIdColaborador('');
     setItemId('');
@@ -97,14 +117,15 @@ export default function Vendas({ setMensagem }) {
     }
 
     try {
-      if (editandoId) {
-        await atualizarVenda(editandoId, {
+      if (id) {
+        await atualizarVenda(id, {
           id_cliente: parseInt(idCliente),
           id_colaborador: parseInt(idColaborador),
           valor_final: valorCustomizado ? parseFloat(valorCustomizado) : undefined,
           status: statusVenda
         });
         if (setMensagem) setMensagem('Venda atualizada com sucesso!');
+        navigate(`/vendas/${id}`);
       } else {
         if (!itemId) {
           alert('Selecione o item vendido!');
@@ -148,50 +169,161 @@ export default function Vendas({ setMensagem }) {
         });
 
         if (setMensagem) setMensagem('Venda registrada com sucesso!');
+        navigate('/vendas');
       }
-
-      cancelarForm();
-      carregarTudo();
     } catch (erro) {
       alert('Erro ao salvar venda: ' + erro.message);
     }
   }
 
-  async function remover(id) {
+  async function remover(idVenda) {
     if (!window.confirm('Deseja excluir esta venda?')) return;
     try {
-      await excluirVenda(id);
+      await excluirVenda(idVenda);
       if (setMensagem) setMensagem('Venda excluída com sucesso!');
-      carregarTudo();
+      if (mode === 'list') {
+        carregarVendas();
+      } else {
+        navigate('/vendas');
+      }
     } catch (erro) {
       alert('Erro ao excluir venda: ' + erro.message);
     }
   }
 
-  return (
-    <div>
-      <div className="page-header">
-        <div className="page-header-text">
-          <h2>Faturamento &amp; Vendas</h2>
-          <p>Registro de atendimentos prestados e venda de cosméticos</p>
+  if (mode === 'view') {
+    if (carregando && !vendaAtual) {
+      return <div className="table-empty">Carregando detalhes da venda...</div>;
+    }
+
+    const dataFormatada = vendaAtual?.data
+      ? new Date(vendaAtual.data).toLocaleDateString('pt-BR')
+      : '-';
+
+    return (
+      <div>
+        <div className="page-header">
+          <div className="page-header-text">
+            <h2>Detalhes da Venda</h2>
+            <p>Registro fiscal e faturamento de procedimentos e cosméticos</p>
+          </div>
+          <div className="page-header-actions">
+            <button className="btn btn-secondary" onClick={() => navigate('/vendas')}>
+              &larr; Voltar para Lista
+            </button>
+            <button className="btn btn-primary" onClick={() => navigate(`/vendas/${id}/editar`)}>
+              Editar Venda
+            </button>
+          </div>
         </div>
 
-        <button
-          className="btn btn-primary"
-          onClick={() => {
-            if (mostrarForm) cancelarForm();
-            else abrirNovo();
-          }}
-        >
-          {mostrarForm ? 'Fechar Formulário' : '+ Nova Venda'}
-        </button>
-      </div>
+        <div className="view-card">
+          <div className="view-header">
+            <div>
+              <div className="view-title">
+                Venda #{vendaAtual?.id} &bull; {vendaAtual?.cliente?.pessoa?.nome || 'Cliente'}
+              </div>
+              <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Realizada em {dataFormatada}</div>
+            </div>
+            <button className="btn btn-danger" onClick={() => remover(id)}>
+              Excluir Venda
+            </button>
+          </div>
 
-      {mostrarForm && (
+          <div className="view-grid">
+            <div className="view-field">
+              <span className="view-label">Valor Final / Total</span>
+              <span className="view-value" style={{ color: 'var(--primary)', fontSize: '20px' }}>
+                R$ {Number(vendaAtual?.valor_final || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+
+            <div className="view-field">
+              <span className="view-label">Status da Transação</span>
+              <span className="view-value">
+                <span className="badge badge-pago">{vendaAtual?.status || 'Pago'}</span>
+              </span>
+            </div>
+
+            <div className="view-field">
+              <span className="view-label">Cliente Atendido</span>
+              <span className="view-value">{vendaAtual?.cliente?.pessoa?.nome || '-'}</span>
+            </div>
+
+            <div className="view-field">
+              <span className="view-label">Profissional Responsável</span>
+              <span className="view-value">{vendaAtual?.colaborador?.pessoa?.nome || '-'}</span>
+            </div>
+
+            <div className="view-field">
+              <span className="view-label">Desconto Concedido</span>
+              <span className="view-value">
+                {vendaAtual?.valor_desconto ? `R$ ${Number(vendaAtual.valor_desconto).toFixed(2)}` : 'R$ 0,00'}
+              </span>
+            </div>
+
+            <div className="view-field">
+              <span className="view-label">Data da Operação</span>
+              <span className="view-value">{dataFormatada}</span>
+            </div>
+          </div>
+
+          {vendaAtual?.itens && vendaAtual.itens.length > 0 && (
+            <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
+              <h4 style={{ marginBottom: '12px', fontSize: '14px' }}>Itens Inclusos nesta Venda</h4>
+              <table style={{ width: '100%', marginBottom: '16px' }}>
+                <thead>
+                  <tr>
+                    <th>Item</th>
+                    <th>Tipo</th>
+                    <th>Qtd</th>
+                    <th>Unitário</th>
+                    <th>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {vendaAtual.itens.map((it) => (
+                    <tr key={it.id}>
+                      <td><strong>{it.servico?.nome || it.produto?.nome || 'Item'}</strong></td>
+                      <td>{it.tipo}</td>
+                      <td>{it.quantidade}</td>
+                      <td>R$ {Number(it.valor_unitario || 0).toFixed(2)}</td>
+                      <td><strong>R$ {Number((it.quantidade || 1) * (it.valor_unitario || 0)).toFixed(2)}</strong></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <div className="view-footer">
+            <button className="btn btn-secondary" onClick={() => navigate('/vendas')}>
+              Voltar
+            </button>
+            <button className="btn btn-primary" onClick={() => navigate(`/vendas/${id}/editar`)}>
+              Editar Dados
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (mode === 'edit') {
+    return (
+      <div>
+        <div className="page-header">
+          <div className="page-header-text">
+            <h2>{id ? `Editar Venda #${id}` : 'Registrar Venda'}</h2>
+            <p>{id ? 'Altere as informações da venda' : 'Registre o pagamento e itens do atendimento'}</p>
+          </div>
+          <button className="btn btn-secondary" onClick={() => navigate('/vendas')}>
+            &larr; Voltar para Lista
+          </button>
+        </div>
+
         <div className="form-card">
-          <h3 className="form-title">
-            {editandoId ? `Editar Venda #${editandoId}` : 'Registrar Nova Venda'}
-          </h3>
+          <h3 className="form-title">{id ? 'Editar Dados da Venda' : 'Registrar Nova Venda'}</h3>
           <form onSubmit={salvarVenda}>
             <div className="form-grid-2">
               <div className="form-group">
@@ -227,7 +359,7 @@ export default function Vendas({ setMensagem }) {
               </div>
             </div>
 
-            {!editandoId && (
+            {!id && (
               <>
                 <div className="form-grid-2">
                   <div className="form-group">
@@ -296,14 +428,14 @@ export default function Vendas({ setMensagem }) {
 
             <div className="form-grid-2">
               <div className="form-group">
-                <label>Valor Total (R$) {editandoId ? '*' : '(Opcional se selecionado item)'}</label>
+                <label>Valor Total (R$) {id ? '*' : '(Opcional se selecionado item)'}</label>
                 <input
                   type="number"
                   step="0.01"
                   value={valorCustomizado}
                   onChange={(e) => setValorCustomizado(e.target.value)}
                   placeholder="Ex: 150.00"
-                  required={!!editandoId}
+                  required={!!id}
                 />
               </div>
 
@@ -324,25 +456,124 @@ export default function Vendas({ setMensagem }) {
               <button
                 type="button"
                 className="btn btn-secondary"
-                onClick={cancelarForm}
+                onClick={() => navigate(id ? `/vendas/${id}` : '/vendas')}
               >
                 Cancelar
               </button>
               <button type="submit" className="btn btn-primary">
-                {editandoId ? 'Atualizar Venda' : 'Salvar Venda'}
+                {id ? 'Salvar Alterações' : 'Salvar Venda'}
               </button>
             </div>
           </form>
         </div>
-      )}
+      </div>
+    );
+  }
+
+  // Filtragem dos dados de vendas
+  const vendasFiltradas = vendas.filter((v) => {
+    const termo = busca.toLowerCase();
+    const nomeCliente = v.cliente?.pessoa?.nome?.toLowerCase() || '';
+    const nomeColab = v.colaborador?.pessoa?.nome?.toLowerCase() || '';
+    const combinaBusca = nomeCliente.includes(termo) || nomeColab.includes(termo) || String(v.id).includes(termo);
+
+    let combinaStatus = true;
+    if (filtroStatus) {
+      combinaStatus = v.status === filtroStatus;
+    }
+
+    let combinaData = true;
+    if (v.data) {
+      const dataVendaStr = new Date(v.data).toISOString().split('T')[0];
+      if (filtroDataInicio && dataVendaStr < filtroDataInicio) combinaData = false;
+      if (filtroDataFim && dataVendaStr > filtroDataFim) combinaData = false;
+    }
+
+    return combinaBusca && combinaStatus && combinaData;
+  });
+
+  return (
+    <div>
+      <div className="page-header">
+        <div className="page-header-text">
+          <h2>Faturamento &amp; Vendas</h2>
+          <p>Registro de atendimentos prestados e venda de cosméticos</p>
+        </div>
+
+        <button
+          className="btn btn-primary"
+          onClick={() => navigate('/vendas/novo')}
+        >
+          + Nova Venda
+        </button>
+      </div>
+
+      {/* FORMULÁRIO DE FILTRO DE VENDAS */}
+      <div className="view-card" style={{ marginBottom: '20px', padding: '16px 20px' }}>
+        <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+          <div className="form-group" style={{ flex: '1', minWidth: '200px' }}>
+            <label style={{ fontSize: '12px' }}>Buscar por Cliente ou Profissional</label>
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Digite o nome ou ID da venda..."
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+            />
+          </div>
+
+          <div className="form-group" style={{ minWidth: '150px' }}>
+            <label style={{ fontSize: '12px' }}>Status da Venda</label>
+            <select value={filtroStatus} onChange={(e) => setFiltroStatus(e.target.value)}>
+              <option value="">Todos os status</option>
+              <option value="Pago">Pago</option>
+              <option value="Pendente">Pendente</option>
+              <option value="Cancelado">Cancelado</option>
+            </select>
+          </div>
+
+          <div className="form-group" style={{ minWidth: '150px' }}>
+            <label style={{ fontSize: '12px' }}>De (Data Início)</label>
+            <input
+              type="date"
+              value={filtroDataInicio}
+              onChange={(e) => setFiltroDataInicio(e.target.value)}
+            />
+          </div>
+
+          <div className="form-group" style={{ minWidth: '150px' }}>
+            <label style={{ fontSize: '12px' }}>Até (Data Fim)</label>
+            <input
+              type="date"
+              value={filtroDataFim}
+              onChange={(e) => setFiltroDataFim(e.target.value)}
+            />
+          </div>
+
+          {(busca || filtroStatus || filtroDataInicio || filtroDataFim) && (
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => {
+                setBusca('');
+                setFiltroStatus('');
+                setFiltroDataInicio('');
+                setFiltroDataFim('');
+              }}
+            >
+              Limpar Filtros
+            </button>
+          )}
+        </div>
+      </div>
 
       <div className="table-card">
         <div className="table-header-box">
-          <h3>Histórico de Vendas ({vendas.length})</h3>
+          <h3>Histórico de Vendas ({vendasFiltradas.length})</h3>
           <button
             type="button"
             className="btn btn-secondary btn-sm"
-            onClick={abrirNovo}
+            onClick={() => navigate('/vendas/novo')}
           >
             + Adicionar
           </button>
@@ -361,16 +592,25 @@ export default function Vendas({ setMensagem }) {
               </tr>
             </thead>
             <tbody>
-              {vendas.length === 0 ? (
+              {vendasFiltradas.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="table-empty">Nenhuma venda registrada ainda.</td>
+                  <td colSpan="7" className="table-empty">
+                    {carregando ? 'Carregando vendas...' : 'Nenhuma venda encontrada para os filtros aplicados.'}
+                  </td>
                 </tr>
               ) : (
-                vendas.map((v) => (
+                vendasFiltradas.map((v) => (
                   <tr key={v.id}>
                     <td>#{v.id}</td>
                     <td>{v.data ? new Date(v.data).toLocaleDateString('pt-BR') : '-'}</td>
-                    <td><strong>{v.cliente?.pessoa?.nome || 'Cliente'}</strong></td>
+                    <td>
+                      <strong
+                        style={{ cursor: 'pointer', color: 'var(--primary)' }}
+                        onClick={() => navigate(`/vendas/${v.id}`)}
+                      >
+                        {v.cliente?.pessoa?.nome || 'Cliente'}
+                      </strong>
+                    </td>
                     <td>{v.colaborador?.pessoa?.nome || 'Profissional'}</td>
                     <td><strong>R$ {Number(v.valor_final || 0).toFixed(2)}</strong></td>
                     <td>
@@ -382,8 +622,15 @@ export default function Vendas({ setMensagem }) {
                       <div className="acoes-coluna">
                         <button
                           type="button"
+                          className="btn-ver"
+                          onClick={() => navigate(`/vendas/${v.id}`)}
+                        >
+                          Ver
+                        </button>
+                        <button
+                          type="button"
                           className="btn-editar"
-                          onClick={() => iniciarEdicao(v)}
+                          onClick={() => navigate(`/vendas/${v.id}/editar`)}
                         >
                           Editar
                         </button>

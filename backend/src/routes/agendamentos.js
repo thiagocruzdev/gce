@@ -1,11 +1,65 @@
 const express = require('express');
 const prisma = require('../prisma');
+const { optionalAuthMiddleware } = require('../utils/auth');
 
 const router = express.Router();
 
-router.get('/', async (req, res) => {
+/**
+ * GET /api/agendamentos
+ * Suporta filtros por query params: id_cliente, id_colaborador, status, data
+ */
+router.get('/', optionalAuthMiddleware, async (req, res) => {
   try {
+    const { id_cliente, id_colaborador, status, data, tipo } = req.query;
+
+    const where = {};
+
+    // Se o usuário autenticado for um CLIENTE, filtra para ver apenas os próprios agendamentos
+    if (req.user && req.user.role === 'CLIENTE' && req.user.id_pessoa) {
+      where.id_cliente = req.user.id_pessoa;
+    } else if (id_cliente) {
+      where.id_cliente = parseInt(id_cliente);
+    }
+
+    // Se o usuário autenticado for COLABORADOR e não passar filtro explícito, restringe a ele
+    if (req.user && req.user.role === 'COLABORADOR' && req.user.id_pessoa && !id_colaborador) {
+      where.id_colaborador = req.user.id_pessoa;
+    } else if (id_colaborador) {
+      where.id_colaborador = parseInt(id_colaborador);
+    }
+
+    if (status) {
+      where.status = status;
+    }
+
+    if (data) {
+      const dataInicio = new Date(data);
+      const dataFim = new Date(data);
+      dataFim.setHours(23, 59, 59, 999);
+      where.data_marcada = {
+        gte: dataInicio,
+        lte: dataFim
+      };
+    }
+
+    // Filtro por tipo: "feitos" (Concluídos ou data passada) vs "falta_fazer" (Pendentes/Confirmados e data futura)
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
+    if (tipo === 'feitos') {
+      where.OR = [
+        { status: 'Concluído' },
+        { data_marcada: { lt: hoje } }
+      ];
+    } else if (tipo === 'falta_fazer') {
+      where.AND = [
+        { status: { in: ['Confirmado', 'Pendente', 'Em andamento'] } },
+        { data_marcada: { gte: hoje } }
+      ];
+    }
+
     const agendamentos = await prisma.agendamento.findMany({
+      where,
       include: {
         cliente: {
           include: {
@@ -18,9 +72,60 @@ router.get('/', async (req, res) => {
           }
         },
         servico: true
+      },
+      orderBy: { data_marcada: 'asc' }
+    });
+
+    res.json(agendamentos);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/agendamentos/colaborador-painel/:id
+ * Retorna os agendamentos separados em "feitos" e "falta fazer" para o colaborador
+ */
+router.get('/colaborador-painel/:id', optionalAuthMiddleware, async (req, res) => {
+  try {
+    const idColab = parseInt(req.params.id);
+    if (isNaN(idColab)) {
+      return res.status(400).json({ error: 'ID do colaborador inválido' });
+    }
+
+    const todos = await prisma.agendamento.findMany({
+      where: { id_colaborador: idColab },
+      include: {
+        cliente: {
+          include: { pessoa: true }
+        },
+        servico: true
+      },
+      orderBy: { data_marcada: 'asc' }
+    });
+
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
+    const feitos = [];
+    const faltaFazer = [];
+
+    todos.forEach((item) => {
+      const dataItem = new Date(item.data_marcada);
+      if (item.status === 'Concluído' || dataItem < hoje) {
+        feitos.push(item);
+      } else {
+        faltaFazer.push(item);
       }
     });
-    res.json(agendamentos);
+
+    res.json({
+      colaborador_id: idColab,
+      total_feitos: feitos.length,
+      total_falta_fazer: faltaFazer.length,
+      feitos,
+      falta_fazer: faltaFazer
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -57,20 +162,30 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-router.post('/', async (req, res) => {
+router.post('/', optionalAuthMiddleware, async (req, res) => {
   try {
-    const { id_cliente, id_colaborador, id_servico, data_marcada, hora_inicio, hora_fim, valor_previsto, status, observacao } = req.body;
+    let { id_cliente, id_colaborador, id_servico, data_marcada, hora_inicio, hora_fim, valor_previsto, status, observacao } = req.body;
+
+    // Se o usuário logado for CLIENTE e não informou id_cliente, usa o id_pessoa dele
+    if (req.user && req.user.role === 'CLIENTE' && req.user.id_pessoa) {
+      id_cliente = req.user.id_pessoa;
+    }
+
+    if (!id_cliente || !id_colaborador || !id_servico || !data_marcada) {
+      return res.status(400).json({ error: 'Cliente, Colaborador, Serviço e Data são obrigatórios.' });
+    }
+
     const novoAgendamento = await prisma.agendamento.create({
       data: {
         id_cliente: parseInt(id_cliente),
         id_colaborador: parseInt(id_colaborador),
         id_servico: parseInt(id_servico),
         data_marcada: new Date(data_marcada),
-        hora_inicio,
-        hora_fim,
+        hora_inicio: hora_inicio || '09:00',
+        hora_fim: hora_fim || null,
         valor_previsto: valor_previsto ? parseFloat(valor_previsto) : null,
-        status: status || 'Pendente',
-        observacao
+        status: status || 'Confirmado',
+        observacao: observacao || null
       },
       include: {
         cliente: {
@@ -108,6 +223,15 @@ router.put('/:id', async (req, res) => {
         valor_previsto: valor_previsto !== undefined ? (valor_previsto ? parseFloat(valor_previsto) : null) : undefined,
         status,
         observacao
+      },
+      include: {
+        cliente: {
+          include: { pessoa: true }
+        },
+        colaborador: {
+          include: { pessoa: true }
+        },
+        servico: true
       }
     });
     res.json(agendamentoAtualizado);

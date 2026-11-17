@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  output   = "../src/generated/client"
 }
 
 datasource db {
@@ -18,6 +19,7 @@ model Pessoa {
   updated_at    DateTime     @updatedAt
   cliente       Cliente?
   colaborador   Colaborador?
+  usuario       Usuario?
 }
 
 model Cliente {
@@ -174,4 +176,15 @@ model PosVenda {
   comentario String?
   data       DateTime @default(now())
   venda      Venda    @relation(fields: [id_venda], references: [id], onDelete: Cascade)
+}
+
+model Usuario {
+  id         Int      @id @default(autoincrement())
+  email      String   @unique
+  senha      String
+  nome       String
+  role       String   @default("CLIENTE") // "PROPRIETARIO", "COLABORADOR", "CLIENTE"
+  id_pessoa  Int?     @unique
+  pessoa     Pessoa?  @relation(fields: [id_pessoa], references: [id], onDelete: SetNull)
+  created_at DateTime @default(now())
 }

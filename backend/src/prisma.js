@@ -1,5 +1,18 @@
-const { PrismaClient } = require('@prisma/client');
+const path = require('path');
+const { PrismaClient } = require('./generated/client');
 
-const prisma = new PrismaClient();
+// Garante que o caminho para o SQLite dev.db seja resolvido corretamente
+const dbPath = path.resolve(__dirname, '../prisma/dev.db');
+if (!process.env.DATABASE_URL || process.env.DATABASE_URL.startsWith('file:.')) {
+  process.env.DATABASE_URL = `file:${dbPath}`;
+}
+
+const prisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: `file:${dbPath}`
+    }
+  }
+});
 
 module.exports = prisma;

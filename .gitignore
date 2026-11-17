@@ -1,0 +1,11 @@
+*/node_modules
+frontend/dist
+backend/prisma/dev.db
+backend/prisma/dev.db-journal
+backend/src/generated/
+*/.env
+*.node
+*.tmp*
+test_tool.txt
+frontend/src/components/Icons.jsx
+frontend/src/pages/Configuracoes.jsx

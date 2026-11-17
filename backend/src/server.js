@@ -1,3 +1,5 @@
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 const express = require('express');
 const cors = require('cors');
 
@@ -10,13 +12,17 @@ const agendamentosRoutes = require('./routes/agendamentos');
 const vendasRoutes = require('./routes/vendas');
 const estoqueRoutes = require('./routes/estoque');
 const posVendaRoutes = require('./routes/posVenda');
+const authRoutes = require('./routes/auth');
+const relatoriosRoutes = require('./routes/relatorios');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(express.json());
 
+app.use('/api/auth', authRoutes);
+app.use('/api/relatorios', relatoriosRoutes);
 app.use('/api/pessoas', pessoasRoutes);
 app.use('/api/clientes', clientesRoutes);
 app.use('/api/colaboradores', colaboradoresRoutes);
