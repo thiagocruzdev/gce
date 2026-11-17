@@ -378,8 +378,11 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', optionalAuthMiddleware, async (req, res) => {
   try {
+    if (req.user && req.user.role === 'CLIENTE') {
+      return res.status(403).json({ error: 'Clientes não podem excluir agendamentos, apenas cancelar' });
+    }
     const id = parseInt(req.params.id);
     await prisma.agendamento.delete({
       where: { id }

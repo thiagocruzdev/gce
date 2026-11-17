@@ -187,6 +187,10 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
   }
 
   async function remover(idAgendamento) {
+    if (ehCliente) {
+      alert('Clientes não podem excluir agendamentos, apenas cancelar.');
+      return;
+    }
     if (!window.confirm('Deseja excluir este agendamento?')) return;
     try {
       await excluirAgendamento(idAgendamento);
@@ -198,6 +202,21 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
       }
     } catch (erro) {
       alert('Erro ao excluir: ' + erro.message);
+    }
+  }
+
+  async function cancelar(idAgendamento) {
+    if (!window.confirm('Deseja cancelar este agendamento?')) return;
+    try {
+      await atualizarAgendamento(idAgendamento, { status: 'Cancelado' });
+      if (setMensagem) setMensagem('Agendamento cancelado com sucesso!');
+      if (mode === 'list') {
+        carregarAgendamentos();
+      } else {
+        carregarDetalhe(idAgendamento);
+      }
+    } catch (erro) {
+      alert('Erro ao cancelar: ' + erro.message);
     }
   }
 
@@ -250,9 +269,11 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
             <button className="btn btn-secondary" onClick={() => navigate('/agendamentos')}>
               &larr; Voltar
             </button>
-            <button className="btn btn-primary" onClick={() => navigate(`/agendamentos/${id}/editar`)}>
-              Editar
-            </button>
+            {!ehCliente && (
+              <button className="btn btn-primary" onClick={() => navigate(`/agendamentos/${id}/editar`)}>
+                Editar
+              </button>
+            )}
           </div>
         </div>
 
@@ -264,9 +285,17 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
                 {agendamentoAtual?.data_marcada ? new Date(agendamentoAtual.data_marcada).toLocaleDateString('pt-BR') : '-'} às {agendamentoAtual?.hora_inicio || '09:00'}
               </div>
             </div>
-            <button className="btn btn-danger" onClick={() => remover(id)}>
-              Excluir
-            </button>
+            {!ehCliente ? (
+              <button className="btn btn-danger" onClick={() => remover(id)}>
+                Excluir
+              </button>
+            ) : (
+              agendamentoAtual?.status !== 'Cancelado' && agendamentoAtual?.status !== 'Concluído' && (
+                <button className="btn btn-danger" onClick={() => cancelar(id)}>
+                  Cancelar Agendamento
+                </button>
+              )
+            )}
           </div>
 
           <div className="view-grid">
@@ -320,9 +349,16 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
             <button className="btn btn-secondary" onClick={() => navigate('/agendamentos')}>
               Voltar
             </button>
-            <button className="btn btn-primary" onClick={() => navigate(`/agendamentos/${id}/editar`)}>
-              Editar
-            </button>
+            {!ehCliente && (
+              <button className="btn btn-primary" onClick={() => navigate(`/agendamentos/${id}/editar`)}>
+                Editar
+              </button>
+            )}
+            {ehCliente && agendamentoAtual?.status !== 'Cancelado' && agendamentoAtual?.status !== 'Concluído' && (
+              <button className="btn btn-danger" onClick={() => cancelar(id)}>
+                Cancelar Agendamento
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -662,13 +698,25 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
                             Editar
                           </button>
                         )}
-                        <button
-                          type="button"
-                          className="btn btn-danger btn-sm"
-                          onClick={() => remover(a.id)}
-                        >
-                          Excluir
-                        </button>
+                        {!ehCliente ? (
+                          <button
+                            type="button"
+                            className="btn btn-danger btn-sm"
+                            onClick={() => remover(a.id)}
+                          >
+                            Excluir
+                          </button>
+                        ) : (
+                          a.status !== 'Cancelado' && a.status !== 'Concluído' && (
+                            <button
+                              type="button"
+                              className="btn btn-danger btn-sm"
+                              onClick={() => cancelar(a.id)}
+                            >
+                              Cancelar
+                            </button>
+                          )
+                        )}
                       </div>
                     </td>
                   </tr>
