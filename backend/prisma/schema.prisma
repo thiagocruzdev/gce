@@ -4,7 +4,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -183,7 +183,7 @@ model Usuario {
   email      String   @unique
   senha      String
   nome       String
-  role       String   @default("CLIENTE") // "PROPRIETARIO", "COLABORADOR", "CLIENTE"
+  role       String   @default("CLIENTE")
   id_pessoa  Int?     @unique
   pessoa     Pessoa?  @relation(fields: [id_pessoa], references: [id], onDelete: SetNull)
   created_at DateTime @default(now())
