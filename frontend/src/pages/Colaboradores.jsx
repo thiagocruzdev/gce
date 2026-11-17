@@ -330,13 +330,6 @@ export default function Colaboradores({ mode = 'list', setMensagem }) {
               onChange={(e) => setBusca(e.target.value)}
             />
           </div>
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            onClick={() => navigate('/colaboradores/novo')}
-          >
-            + Adicionar
-          </button>
         </div>
         <div className="table-container">
           <table>

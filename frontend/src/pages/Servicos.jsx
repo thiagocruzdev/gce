@@ -6,7 +6,7 @@ import { getServicos, getServico, criarServico, atualizarServico, excluirServico
 export default function Servicos({ mode = 'list', setMensagem }) {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { ehCliente } = useAuth();
+  const { ehCliente, ehProprietario } = useAuth();
 
   const [servicos, setServicos] = useState([]);
   const [busca, setBusca] = useState('');
@@ -133,9 +133,11 @@ export default function Servicos({ mode = 'list', setMensagem }) {
             <button className="btn btn-secondary" onClick={() => navigate('/servicos')}>
               &larr; Voltar para Lista
             </button>
-            <button className="btn btn-primary" onClick={() => navigate(`/servicos/${id}/editar`)}>
-              Editar Serviço
-            </button>
+            {ehProprietario && (
+              <button className="btn btn-primary" onClick={() => navigate(`/servicos/${id}/editar`)}>
+                Editar Serviço
+              </button>
+            )}
           </div>
         </div>
 
@@ -145,9 +147,11 @@ export default function Servicos({ mode = 'list', setMensagem }) {
               <div className="view-title">{servicoAtual?.nome}</div>
               <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Código do Serviço #{servicoAtual?.id}</div>
             </div>
-            <button className="btn btn-danger" onClick={() => remover(id)}>
-              Excluir Serviço
-            </button>
+            {ehProprietario && (
+              <button className="btn btn-danger" onClick={() => remover(id)}>
+                Excluir Serviço
+              </button>
+            )}
           </div>
 
           <div className="view-grid">
@@ -187,9 +191,11 @@ export default function Servicos({ mode = 'list', setMensagem }) {
             <button className="btn btn-secondary" onClick={() => navigate('/servicos')}>
               Voltar
             </button>
-            <button className="btn btn-primary" onClick={() => navigate(`/servicos/${id}/editar`)}>
-              Editar Dados
-            </button>
+            {ehProprietario && (
+              <button className="btn btn-primary" onClick={() => navigate(`/servicos/${id}/editar`)}>
+                Editar Dados
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -292,7 +298,7 @@ export default function Servicos({ mode = 'list', setMensagem }) {
           <p>Procedimentos e tratamentos disponíveis na clínica</p>
         </div>
 
-        {!ehCliente && (
+        {ehProprietario && (
           <button
             className="btn btn-primary"
             onClick={() => navigate('/servicos/novo')}
@@ -314,15 +320,6 @@ export default function Servicos({ mode = 'list', setMensagem }) {
               onChange={(e) => setBusca(e.target.value)}
             />
           </div>
-          {!ehCliente && (
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={() => navigate('/servicos/novo')}
-            >
-              + Adicionar
-            </button>
-          )}
         </div>
         <div className="table-container">
           <table>
@@ -372,20 +369,24 @@ export default function Servicos({ mode = 'list', setMensagem }) {
                           >
                             Ver
                           </button>
-                          <button
-                            type="button"
-                            className="btn-editar"
-                            onClick={() => navigate(`/servicos/${s.id}/editar`)}
-                          >
-                            Editar
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btn-danger btn-sm"
-                            onClick={() => remover(s.id)}
-                          >
-                            Excluir
-                          </button>
+                          {ehProprietario && (
+                            <button
+                              type="button"
+                              className="btn-editar"
+                              onClick={() => navigate(`/servicos/${s.id}/editar`)}
+                            >
+                              Editar
+                            </button>
+                          )}
+                          {ehProprietario && (
+                            <button
+                              type="button"
+                              className="btn btn-danger btn-sm"
+                              onClick={() => remover(s.id)}
+                            >
+                              Excluir
+                            </button>
+                          )}
                         </div>
                       </td>
                     )}

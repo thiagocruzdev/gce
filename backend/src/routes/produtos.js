@@ -78,11 +78,39 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+
+    const itensVenda = await prisma.vendaItem.count({
+      where: { id_produto: id }
+    });
+    if (itensVenda > 0) {
+      return res.status(400).json({
+        error: 'Este produto não pode ser excluído porque já está registrado em vendas. Você pode desativá-lo editando o seu status.'
+      });
+    }
+
+    const servicoProdutos = await prisma.servicoProduto.count({
+      where: { id_produto: id }
+    });
+    if (servicoProdutos > 0) {
+      return res.status(400).json({
+        error: 'Este produto não pode ser excluído porque faz parte da composição de serviços cadastrados.'
+      });
+    }
+
+    await prisma.estoqueMovimentacao.deleteMany({
+      where: { id_produto: id }
+    });
+
     await prisma.produto.delete({
       where: { id }
     });
     res.json({ message: 'Produto removido com sucesso' });
   } catch (error) {
+    if (error.code === 'P2003' || (error.message && error.message.includes('Foreign key constraint'))) {
+      return res.status(400).json({
+        error: 'Não é possível excluir este produto pois ele possui vínculos com vendas ou movimentações no sistema.'
+      });
+    }
     res.status(400).json({ error: error.message });
   }
 });

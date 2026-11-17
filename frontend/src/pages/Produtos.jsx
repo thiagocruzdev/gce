@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { getProdutos, getProduto, criarProduto, atualizarProduto, excluirProduto, movimentarEstoque } from '../services/api';
 
 export default function Produtos({ mode = 'list', setMensagem }) {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { ehProprietario } = useAuth();
 
   const [produtos, setProdutos] = useState([]);
   const [busca, setBusca] = useState('');
@@ -151,7 +153,7 @@ export default function Produtos({ mode = 'list', setMensagem }) {
         navigate('/produtos');
       }
     } catch (erro) {
-      alert('Erro ao excluir produto: ' + erro.message);
+      alert(erro.message);
     }
   }
 
@@ -173,9 +175,11 @@ export default function Produtos({ mode = 'list', setMensagem }) {
             <button className="btn btn-secondary" onClick={() => navigate('/produtos')}>
               &larr; Voltar para Lista
             </button>
-            <button className="btn btn-primary" onClick={() => navigate(`/produtos/${id}/editar`)}>
-              Editar Produto
-            </button>
+            {ehProprietario && (
+              <button className="btn btn-primary" onClick={() => navigate(`/produtos/${id}/editar`)}>
+                Editar Produto
+              </button>
+            )}
           </div>
         </div>
 
@@ -195,9 +199,11 @@ export default function Produtos({ mode = 'list', setMensagem }) {
               >
                 ± Ajustar Estoque
               </button>
-              <button className="btn btn-danger" onClick={() => remover(id)}>
-                Excluir Produto
-              </button>
+              {ehProprietario && (
+                <button className="btn btn-danger" onClick={() => remover(id)}>
+                  Excluir Produto
+                </button>
+              )}
             </div>
           </div>
 
@@ -291,9 +297,11 @@ export default function Produtos({ mode = 'list', setMensagem }) {
             <button className="btn btn-secondary" onClick={() => navigate('/produtos')}>
               Voltar
             </button>
-            <button className="btn btn-primary" onClick={() => navigate(`/produtos/${id}/editar`)}>
-              Editar Dados
-            </button>
+            {ehProprietario && (
+              <button className="btn btn-primary" onClick={() => navigate(`/produtos/${id}/editar`)}>
+                Editar Dados
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -424,12 +432,14 @@ export default function Produtos({ mode = 'list', setMensagem }) {
           >
             {mostrarEstoque ? 'Fechar Estoque' : '± Movimentar Estoque'}
           </button>
-          <button
-            className="btn btn-primary"
-            onClick={() => navigate('/produtos/novo')}
-          >
-            + Novo Produto
-          </button>
+          {ehProprietario && (
+            <button
+              className="btn btn-primary"
+              onClick={() => navigate('/produtos/novo')}
+            >
+              + Novo Produto
+            </button>
+          )}
         </div>
       </div>
 
@@ -505,13 +515,6 @@ export default function Produtos({ mode = 'list', setMensagem }) {
               onChange={(e) => setBusca(e.target.value)}
             />
           </div>
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            onClick={() => navigate('/produtos/novo')}
-          >
-            + Adicionar
-          </button>
         </div>
         <div className="table-container">
           <table>
@@ -564,20 +567,24 @@ export default function Produtos({ mode = 'list', setMensagem }) {
                           >
                             Ver
                           </button>
-                          <button
-                            type="button"
-                            className="btn-editar"
-                            onClick={() => navigate(`/produtos/${p.id}/editar`)}
-                          >
-                            Editar
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btn-danger btn-sm"
-                            onClick={() => remover(p.id)}
-                          >
-                            Excluir
-                          </button>
+                          {ehProprietario && (
+                            <button
+                              type="button"
+                              className="btn-editar"
+                              onClick={() => navigate(`/produtos/${p.id}/editar`)}
+                            >
+                              Editar
+                            </button>
+                          )}
+                          {ehProprietario && (
+                            <button
+                              type="button"
+                              className="btn btn-danger btn-sm"
+                              onClick={() => remover(p.id)}
+                            >
+                              Excluir
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

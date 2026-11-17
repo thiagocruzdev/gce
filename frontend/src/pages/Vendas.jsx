@@ -520,13 +520,6 @@ export default function Vendas({ mode = 'list', setMensagem }) {
       <div className="table-card">
         <div className="table-header-box">
           <h3>Histórico de Vendas ({vendasFiltradas.length})</h3>
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            onClick={() => navigate('/vendas/novo')}
-          >
-            + Adicionar
-          </button>
         </div>
         <div className="table-container">
           <table>

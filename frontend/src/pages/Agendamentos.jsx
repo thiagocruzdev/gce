@@ -610,13 +610,6 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
           <h3>
             {ehCliente ? 'Meus Atendimentos' : 'Horários Agendados'} ({agendamentosFiltrados.length})
           </h3>
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            onClick={() => navigate('/agendamentos/novo')}
-          >
-            + Adicionar
-          </button>
         </div>
 
         <div className="table-container">

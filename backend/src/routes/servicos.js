@@ -85,11 +85,39 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+
+    const agendamentos = await prisma.agendamento.count({
+      where: { id_servico: id }
+    });
+    if (agendamentos > 0) {
+      return res.status(400).json({
+        error: 'Este serviço não pode ser excluído porque possui agendamentos vinculados.'
+      });
+    }
+
+    const itensVenda = await prisma.vendaItem.count({
+      where: { id_servico: id }
+    });
+    if (itensVenda > 0) {
+      return res.status(400).json({
+        error: 'Este serviço não pode ser excluído porque já está registrado em vendas.'
+      });
+    }
+
+    await prisma.servicoProduto.deleteMany({
+      where: { id_servico: id }
+    });
+
     await prisma.servico.delete({
       where: { id }
     });
     res.json({ message: 'Serviço removido com sucesso' });
   } catch (error) {
+    if (error.code === 'P2003' || (error.message && error.message.includes('Foreign key constraint'))) {
+      return res.status(400).json({
+        error: 'Não é possível excluir este serviço pois ele possui registros vinculados no sistema.'
+      });
+    }
     res.status(400).json({ error: error.message });
   }
 });

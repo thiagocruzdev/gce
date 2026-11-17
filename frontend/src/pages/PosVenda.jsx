@@ -298,13 +298,6 @@ export default function PosVenda({ mode = 'list', setMensagem }) {
       <div className="table-card">
         <div className="table-header-box">
           <h3>Avaliações Registradas ({avaliacoes.length})</h3>
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            onClick={() => navigate('/posvenda/novo')}
-          >
-            + Adicionar
-          </button>
         </div>
         <div className="table-container">
           <table>

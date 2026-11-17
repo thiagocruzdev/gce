@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { getClientes, getAgendamentos, getServicos, getVendas } from '../services/api';
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { ehProprietario, ehColaborador, usuario } = useAuth();
   const [totalClientes, setTotalClientes] = useState(0);
   const [totalAgendamentos, setTotalAgendamentos] = useState(0);
   const [totalServicos, setTotalServicos] = useState(0);
@@ -13,26 +15,37 @@ export default function Dashboard() {
 
   useEffect(() => {
     carregarDados();
-  }, []);
+  }, [ehProprietario, ehColaborador, usuario]);
 
   async function carregarDados() {
     try {
-      const [clientes, agendamentos, servicos, vendas] = await Promise.all([
+      const promessas = [
         getClientes().catch(() => []),
-        getAgendamentos().catch(() => []),
-        getServicos().catch(() => []),
-        getVendas().catch(() => [])
-      ]);
+        getAgendamentos(ehColaborador && usuario?.id_pessoa ? { id_colaborador: usuario.id_pessoa } : {}).catch(() => []),
+        getServicos().catch(() => [])
+      ];
+
+      if (ehProprietario) {
+        promessas.push(getVendas().catch(() => []));
+      }
+
+      const resultados = await Promise.all(promessas);
+      const clientes = resultados[0] || [];
+      const agendamentos = resultados[1] || [];
+      const servicos = resultados[2] || [];
+      const vendas = ehProprietario ? (resultados[3] || []) : [];
 
       setTotalClientes(clientes.length || 0);
       setTotalAgendamentos(agendamentos.length || 0);
       setTotalServicos(servicos.length || 0);
 
-      const somaVendas = (vendas || []).reduce((acc, v) => acc + (v.valor_final || 0), 0);
-      setTotalVendas(somaVendas);
+      if (ehProprietario) {
+        const somaVendas = vendas.reduce((acc, v) => acc + (v.valor_final || 0), 0);
+        setTotalVendas(somaVendas);
+        setUltimasVendas(vendas.slice(0, 5));
+      }
 
-      setUltimosAgendamentos((agendamentos || []).slice(0, 5));
-      setUltimasVendas((vendas || []).slice(0, 5));
+      setUltimosAgendamentos(agendamentos.slice(0, 5));
     } catch (erro) {
       console.log('Erro ao carregar dashboard:', erro);
     }
@@ -66,13 +79,15 @@ export default function Dashboard() {
           <div className="metric-card-sub">Procedimentos no catálogo &rarr;</div>
         </div>
 
-        <div className="metric-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/vendas')}>
-          <div className="metric-card-label">Faturamento Total</div>
-          <div className="metric-card-value">
-            R$ {Number(totalVendas).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+        {ehProprietario && (
+          <div className="metric-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/vendas')}>
+            <div className="metric-card-label">Faturamento Total</div>
+            <div className="metric-card-value">
+              R$ {Number(totalVendas).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </div>
+            <div className="metric-card-sub">Receita acumulada &rarr;</div>
           </div>
-          <div className="metric-card-sub">Receita acumulada &rarr;</div>
-        </div>
+        )}
       </div>
 
       <div className="table-card">
@@ -132,57 +147,59 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="table-card">
-        <div className="table-header-box">
-          <h3>Últimas Vendas &amp; Faturamentos</h3>
-          <button className="btn btn-secondary btn-sm" onClick={() => navigate('/vendas')}>
-            Ver todas
-          </button>
-        </div>
-        <div className="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Data</th>
-                <th>Cliente</th>
-                <th>Profissional</th>
-                <th>Valor Total</th>
-                <th>Status</th>
-                <th>Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ultimasVendas.length === 0 ? (
+      {ehProprietario && (
+        <div className="table-card">
+          <div className="table-header-box">
+            <h3>Últimas Vendas &amp; Faturamentos</h3>
+            <button className="btn btn-secondary btn-sm" onClick={() => navigate('/vendas')}>
+              Ver todas
+            </button>
+          </div>
+          <div className="table-container">
+            <table>
+              <thead>
                 <tr>
-                  <td colSpan="6" className="table-empty">Nenhuma venda registrada ainda.</td>
+                  <th>Data</th>
+                  <th>Cliente</th>
+                  <th>Profissional</th>
+                  <th>Valor Total</th>
+                  <th>Status</th>
+                  <th>Ações</th>
                 </tr>
-              ) : (
-                ultimasVendas.map((v) => (
-                  <tr key={v.id}>
-                    <td>{v.data ? new Date(v.data).toLocaleDateString('pt-BR') : '-'}</td>
-                    <td>{v.cliente?.pessoa?.nome || 'Cliente'}</td>
-                    <td>{v.colaborador?.pessoa?.nome || 'Profissional'}</td>
-                    <td><strong>R$ {Number(v.valor_final || 0).toFixed(2)}</strong></td>
-                    <td>
-                      <span className="badge badge-pago">
-                        {v.status || 'Pago'}
-                      </span>
-                    </td>
-                    <td>
-                      <button
-                        className="btn-ver"
-                        onClick={() => navigate(`/vendas/${v.id}`)}
-                      >
-                        Ver
-                      </button>
-                    </td>
+              </thead>
+              <tbody>
+                {ultimasVendas.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" className="table-empty">Nenhuma venda registrada ainda.</td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  ultimasVendas.map((v) => (
+                    <tr key={v.id}>
+                      <td>{v.data ? new Date(v.data).toLocaleDateString('pt-BR') : '-'}</td>
+                      <td>{v.cliente?.pessoa?.nome || 'Cliente'}</td>
+                      <td>{v.colaborador?.pessoa?.nome || 'Profissional'}</td>
+                      <td><strong>R$ {Number(v.valor_final || 0).toFixed(2)}</strong></td>
+                      <td>
+                        <span className="badge badge-pago">
+                          {v.status || 'Pago'}
+                        </span>
+                      </td>
+                      <td>
+                        <button
+                          className="btn-ver"
+                          onClick={() => navigate(`/vendas/${v.id}`)}
+                        >
+                          Ver
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

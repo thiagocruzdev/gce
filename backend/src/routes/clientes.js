@@ -190,11 +190,34 @@ router.delete('/:id_pessoa', async (req, res) => {
       return res.status(400).json({ error: 'ID de cliente inválido' });
     }
 
+    const agendamentos = await prisma.agendamento.count({
+      where: { id_cliente: idPessoa }
+    });
+    if (agendamentos > 0) {
+      return res.status(400).json({
+        error: 'Este cliente não pode ser excluído porque possui agendamentos cadastrados.'
+      });
+    }
+
+    const vendas = await prisma.venda.count({
+      where: { id_cliente: idPessoa }
+    });
+    if (vendas > 0) {
+      return res.status(400).json({
+        error: 'Este cliente não pode ser excluído porque possui vendas registradas.'
+      });
+    }
+
     await prisma.cliente.delete({
       where: { id_pessoa: idPessoa }
     });
     res.json({ message: 'Cliente removido com sucesso' });
   } catch (error) {
+    if (error.code === 'P2003' || (error.message && error.message.includes('Foreign key constraint'))) {
+      return res.status(400).json({
+        error: 'Não é possível excluir este cliente pois ele possui registros vinculados no sistema.'
+      });
+    }
     res.status(400).json({ error: error.message });
   }
 });

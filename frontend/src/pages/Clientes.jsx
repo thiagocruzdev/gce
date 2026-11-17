@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { getClientes, getCliente, criarCliente, atualizarCliente, excluirCliente } from '../services/api';
 import { validarCPF, validarEmail, mascaraCPF, mascaraTelefone } from '../utils/validacoes';
 
 export default function Clientes({ mode = 'list', setMensagem }) {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { ehProprietario } = useAuth();
 
   const [clientes, setClientes] = useState([]);
   const [busca, setBusca] = useState('');
@@ -167,9 +169,11 @@ export default function Clientes({ mode = 'list', setMensagem }) {
               <div className="view-title">{clienteAtual?.pessoa?.nome || 'Cliente'}</div>
               <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>ID Registro #{clienteAtual?.id_pessoa}</div>
             </div>
-            <button className="btn btn-danger" onClick={() => remover(id)}>
-              Excluir Registro
-            </button>
+            {ehProprietario && (
+              <button className="btn btn-danger" onClick={() => remover(id)}>
+                Excluir Registro
+              </button>
+            )}
           </div>
 
           <div className="view-grid">
@@ -378,9 +382,6 @@ export default function Clientes({ mode = 'list', setMensagem }) {
               onChange={(e) => setBusca(e.target.value)}
             />
           </div>
-          <button className="btn btn-secondary btn-sm" onClick={() => navigate('/clientes/novo')}>
-            + Adicionar
-          </button>
         </div>
 
         <div className="table-container">
@@ -441,13 +442,15 @@ export default function Clientes({ mode = 'list', setMensagem }) {
                         >
                           Editar
                         </button>
-                        <button
-                          type="button"
-                          className="btn btn-danger btn-sm"
-                          onClick={() => remover(c.id_pessoa)}
-                        >
-                          Excluir
-                        </button>
+                        {ehProprietario && (
+                          <button
+                            type="button"
+                            className="btn btn-danger btn-sm"
+                            onClick={() => remover(c.id_pessoa)}
+                          >
+                            Excluir
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
