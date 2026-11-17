@@ -17,7 +17,6 @@ export default function Navbar() {
   } else if (ehCliente) {
     menus = [
       { path: '/agendamentos', label: 'Meus Agendamentos', match: (p) => p.startsWith('/agendamentos') },
-      { path: '/agendamentos/novo', label: '+ Novo Agendamento', match: (p) => p === '/agendamentos/novo' },
       { path: '/servicos', label: 'Catálogo de Serviços', match: (p) => p.startsWith('/servicos') }
     ];
   } else if (ehColaborador) {
@@ -40,18 +39,6 @@ export default function Navbar() {
       { path: '/posvenda', label: 'Pós-Venda', match: (p) => p.startsWith('/posvenda') },
       { path: '/relatorios', label: 'Relatórios', match: (p) => p.startsWith('/relatorios') }
     ];
-  }
-
-  function getBadgePerfil() {
-    if (!usuario) return null;
-    const r = (usuario.role || '').toUpperCase();
-    if (r === 'PROPRIETARIO') {
-      return <span className="badge badge-confirmado" style={{ fontSize: '11px' }}>Proprietário</span>;
-    }
-    if (r === 'COLABORADOR') {
-      return <span className="badge badge-pendente" style={{ fontSize: '11px' }}>Colaborador</span>;
-    }
-    return <span className="badge badge-pago" style={{ fontSize: '11px' }}>Cliente</span>;
   }
 
   return (
@@ -91,7 +78,6 @@ export default function Navbar() {
                 <span style={{ fontSize: '13px', fontWeight: '600' }}>
                   {usuario.nome}
                 </span>
-                {getBadgePerfil()}
               </div>
               <button
                 type="button"
