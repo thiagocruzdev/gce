@@ -4,24 +4,18 @@ const { optionalAuthMiddleware } = require('../utils/auth');
 
 const router = express.Router();
 
-/**
- * GET /api/agendamentos
- * Suporta filtros por query params: id_cliente, id_colaborador, status, data
- */
 router.get('/', optionalAuthMiddleware, async (req, res) => {
   try {
     const { id_cliente, id_colaborador, status, data, tipo } = req.query;
 
     const where = {};
 
-    // Se o usuário autenticado for um CLIENTE, filtra para ver apenas os próprios agendamentos
     if (req.user && req.user.role === 'CLIENTE' && req.user.id_pessoa) {
       where.id_cliente = req.user.id_pessoa;
     } else if (id_cliente) {
       where.id_cliente = parseInt(id_cliente);
     }
 
-    // Se o usuário autenticado for COLABORADOR e não passar filtro explícito, restringe a ele
     if (req.user && req.user.role === 'COLABORADOR' && req.user.id_pessoa && !id_colaborador) {
       where.id_colaborador = req.user.id_pessoa;
     } else if (id_colaborador) {
@@ -42,7 +36,6 @@ router.get('/', optionalAuthMiddleware, async (req, res) => {
       };
     }
 
-    // Filtro por tipo: "feitos" (Concluídos ou data passada) vs "falta_fazer" (Pendentes/Confirmados e data futura)
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
 
@@ -82,15 +75,11 @@ router.get('/', optionalAuthMiddleware, async (req, res) => {
   }
 });
 
-/**
- * GET /api/agendamentos/colaborador-painel/:id
- * Retorna os agendamentos separados em "feitos" e "falta fazer" para o colaborador
- */
 router.get('/colaborador-painel/:id', optionalAuthMiddleware, async (req, res) => {
   try {
     const idColab = parseInt(req.params.id);
     if (isNaN(idColab)) {
-      return res.status(400).json({ error: 'ID do colaborador inválido' });
+      return res.status(400).json({ error: 'ID inválido' });
     }
 
     const todos = await prisma.agendamento.findMany({
@@ -166,13 +155,12 @@ router.post('/', optionalAuthMiddleware, async (req, res) => {
   try {
     let { id_cliente, id_colaborador, id_servico, data_marcada, hora_inicio, hora_fim, valor_previsto, status, observacao } = req.body;
 
-    // Se o usuário logado for CLIENTE e não informou id_cliente, usa o id_pessoa dele
     if (req.user && req.user.role === 'CLIENTE' && req.user.id_pessoa) {
       id_cliente = req.user.id_pessoa;
     }
 
     if (!id_cliente || !id_colaborador || !id_servico || !data_marcada) {
-      return res.status(400).json({ error: 'Cliente, Colaborador, Serviço e Data são obrigatórios.' });
+      return res.status(400).json({ error: 'Preencha os campos obrigatórios' });
     }
 
     const novoAgendamento = await prisma.agendamento.create({

@@ -19,7 +19,6 @@ function RotaInicial({ setMensagem }) {
   if (!usuario) {
     return <Navigate to="/login" replace />;
   }
-  // Cliente é direcionado diretamente para Meus Agendamentos
   if (ehCliente) {
     return <Navigate to="/agendamentos" replace />;
   }
@@ -49,10 +48,8 @@ export default function App() {
           )}
 
           <Routes>
-            {/* ROTA PÚBLICA DE AUTENTICAÇÃO */}
             <Route path="/login" element={<Login />} />
 
-            {/* ROTA INICIAL (DASHBOARD OU REDIRECIONAMENTO POR PERFIL) */}
             <Route
               path="/"
               element={
@@ -62,7 +59,6 @@ export default function App() {
               }
             />
 
-            {/* AGENDAMENTOS: ACESSÍVEL POR CLIENTE, COLABORADOR E PROPRIETÁRIO */}
             <Route
               path="/agendamentos"
               element={
@@ -112,7 +108,6 @@ export default function App() {
               }
             />
 
-            {/* CLIENTES: PROPRIETÁRIO E COLABORADOR */}
             <Route
               path="/clientes"
               element={
@@ -162,7 +157,6 @@ export default function App() {
               }
             />
 
-            {/* COLABORADORES: EXCLUSIVO DO PROPRIETÁRIO */}
             <Route
               path="/colaboradores"
               element={
@@ -212,7 +206,6 @@ export default function App() {
               }
             />
 
-            {/* SERVIÇOS: TODOS OS USUÁRIOS (CLIENTE CONSULTA CATÁLOGO) */}
             <Route
               path="/servicos"
               element={
@@ -262,7 +255,6 @@ export default function App() {
               }
             />
 
-            {/* PRODUTOS: PROPRIETÁRIO E COLABORADOR */}
             <Route
               path="/produtos"
               element={
@@ -312,7 +304,6 @@ export default function App() {
               }
             />
 
-            {/* VENDAS: EXCLUSIVO DO PROPRIETÁRIO */}
             <Route
               path="/vendas"
               element={
@@ -362,7 +353,6 @@ export default function App() {
               }
             />
 
-            {/* PÓS-VENDA: PROPRIETÁRIO */}
             <Route
               path="/posvenda"
               element={
@@ -412,7 +402,6 @@ export default function App() {
               }
             />
 
-            {/* RELATÓRIOS E CONSULTAS AVANÇADAS: PROPRIETÁRIO */}
             <Route
               path="/relatorios"
               element={

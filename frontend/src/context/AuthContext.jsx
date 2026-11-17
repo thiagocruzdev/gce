@@ -19,8 +19,7 @@ export function AuthProvider({ children }) {
           const dados = await getMe();
           setUsuario(dados);
           localStorage.setItem('gce_usuario', JSON.stringify(dados));
-        } catch (err) {
-          console.warn('Sessão expirada:', err);
+        } catch {
           fazerLogout();
         }
       }
@@ -38,7 +37,7 @@ export function AuthProvider({ children }) {
       localStorage.setItem('gce_usuario', JSON.stringify(res.usuario));
       return res.usuario;
     }
-    throw new Error('Resposta de login inválida do servidor');
+    throw new Error('Falha no login');
   }
 
   function fazerLogout() {

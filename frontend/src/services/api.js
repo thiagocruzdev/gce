@@ -12,7 +12,7 @@ async function handleResponse(response) {
   let data;
   try {
     data = await response.json();
-  } catch (err) {
+  } catch {
     data = null;
   }
   if (!response.ok) {
@@ -22,7 +22,6 @@ async function handleResponse(response) {
   return data;
 }
 
-// ================= AUTENTICAÇÃO =================
 export async function login(email, senha) {
   const response = await fetch(`${API_URL}/auth/login`, {
     method: 'POST',
@@ -48,7 +47,6 @@ export async function getMe() {
   return handleResponse(response);
 }
 
-// ================= PESSOAS =================
 export async function getPessoas() {
   const response = await fetch(`${API_URL}/pessoas`, { headers: getHeaders() });
   return handleResponse(response);
@@ -63,7 +61,6 @@ export async function criarPessoa(dados) {
   return handleResponse(response);
 }
 
-// ================= CLIENTES =================
 export async function getClientes() {
   const response = await fetch(`${API_URL}/clientes`, { headers: getHeaders() });
   return handleResponse(response);
@@ -100,7 +97,6 @@ export async function excluirCliente(id) {
   return handleResponse(response);
 }
 
-// ================= COLABORADORES =================
 export async function getColaboradores() {
   const response = await fetch(`${API_URL}/colaboradores`, { headers: getHeaders() });
   return handleResponse(response);
@@ -137,7 +133,6 @@ export async function excluirColaborador(id) {
   return handleResponse(response);
 }
 
-// ================= SERVIÇOS =================
 export async function getServicos() {
   const response = await fetch(`${API_URL}/servicos`, { headers: getHeaders() });
   return handleResponse(response);
@@ -174,7 +169,6 @@ export async function excluirServico(id) {
   return handleResponse(response);
 }
 
-// ================= PRODUTOS =================
 export async function getProdutos() {
   const response = await fetch(`${API_URL}/produtos`, { headers: getHeaders() });
   return handleResponse(response);
@@ -220,7 +214,6 @@ export async function movimentarEstoque(dados) {
   return handleResponse(response);
 }
 
-// ================= AGENDAMENTOS =================
 export async function getAgendamentos(filtros = {}) {
   const query = new URLSearchParams();
   if (filtros.id_cliente) query.append('id_cliente', filtros.id_cliente);
@@ -272,7 +265,6 @@ export async function excluirAgendamento(id) {
   return handleResponse(response);
 }
 
-// ================= VENDAS =================
 export async function getVendas(filtros = {}) {
   const query = new URLSearchParams();
   if (filtros.status) query.append('status', filtros.status);
@@ -333,7 +325,6 @@ export async function excluirVenda(id) {
   return handleResponse(response);
 }
 
-// ================= PÓS-VENDA =================
 export async function getPosVendas() {
   const response = await fetch(`${API_URL}/pos-venda`, { headers: getHeaders() });
   return handleResponse(response);
@@ -370,8 +361,6 @@ export async function excluirPosVenda(id) {
   return handleResponse(response);
 }
 
-// ================= CONSULTAS E RELATÓRIOS COMPLEXOS =================
-// 1. Múltiplas tabelas com totalização
 export async function getRelatorioMultiTabelas(filtros = {}) {
   const query = new URLSearchParams();
   if (filtros.status) query.append('status', filtros.status);
@@ -384,13 +373,11 @@ export async function getRelatorioMultiTabelas(filtros = {}) {
   return handleResponse(response);
 }
 
-// 2. Consulta de Agrupamento (GROUP BY)
 export async function getRelatorioAgrupamentos() {
   const response = await fetch(`${API_URL}/relatorios/agrupamentos`, { headers: getHeaders() });
   return handleResponse(response);
 }
 
-// 3. Consulta de Pivot
 export async function getRelatorioPivot(ano) {
   const url = `${API_URL}/relatorios/pivot${ano ? `?ano=${ano}` : ''}`;
   const response = await fetch(url, { headers: getHeaders() });

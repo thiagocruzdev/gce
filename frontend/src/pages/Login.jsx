@@ -7,7 +7,7 @@ import iconeImg from '../images/icone.jpeg';
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { fazerLogin, usuario } = useAuth();
+  const { fazerLogin } = useAuth();
 
   const [modoCadastro, setModoCadastro] = useState(false);
   const [email, setEmail] = useState('');
@@ -26,7 +26,7 @@ export default function Login() {
     setErro('');
 
     if (!email.trim() || !senha.trim()) {
-      setErro('Por favor, preencha todos os campos obrigatórios.');
+      setErro('Preencha os campos obrigatórios.');
       return;
     }
 
@@ -34,7 +34,7 @@ export default function Login() {
       setCarregando(true);
       if (modoCadastro) {
         if (!nome.trim()) {
-          setErro('O nome completo é obrigatório para cadastro.');
+          setErro('O nome é obrigatório.');
           setCarregando(false);
           return;
         }
@@ -51,7 +51,7 @@ export default function Login() {
       await fazerLogin(email.trim(), senha.trim());
       navigate(destino, { replace: true });
     } catch (err) {
-      setErro(err.message || 'Falha ao autenticar.');
+      setErro(err.message || 'Erro ao realizar login.');
     } finally {
       setCarregando(false);
     }
@@ -64,23 +64,20 @@ export default function Login() {
   }
 
   return (
-    <div style={{ maxWidth: '480px', margin: '40px auto', padding: '0 16px' }}>
-      <div className="view-card" style={{ padding: '32px 28px' }}>
-        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+    <div style={{ maxWidth: '440px', margin: '40px auto', padding: '0 16px' }}>
+      <div className="view-card" style={{ padding: '30px 24px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
           <img
             src={iconeImg}
             alt="Renata Faveri"
-            style={{ width: '64px', height: '64px', borderRadius: '50%', objectFit: 'cover', margin: '0 auto 12px' }}
+            style={{ width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover', margin: '0 auto 10px' }}
           />
-          <h2 style={{ fontSize: '22px', color: 'var(--primary)', marginBottom: '4px' }}>
+          <h2 style={{ fontSize: '20px', color: 'var(--primary)', marginBottom: '4px' }}>
             Renata Faveri
           </h2>
-          <span style={{ fontSize: '13px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>
+          <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
             Beauty &amp; Academy
           </span>
-          <p style={{ marginTop: '12px', fontSize: '14px', color: 'var(--text-muted)' }}>
-            {modoCadastro ? 'Crie sua conta de cliente para agendamentos' : 'Acesse o sistema com suas credenciais'}
-          </p>
         </div>
 
         {erro && (
@@ -89,9 +86,8 @@ export default function Login() {
             color: 'var(--red-text)',
             padding: '10px 14px',
             borderRadius: '6px',
-            marginBottom: '18px',
-            fontSize: '13.5px',
-            border: '1px solid rgba(200, 30, 30, 0.2)'
+            marginBottom: '16px',
+            fontSize: '13px'
           }}>
             {erro}
           </div>
@@ -100,19 +96,19 @@ export default function Login() {
         <form onSubmit={handleSubmit}>
           {modoCadastro && (
             <>
-              <div className="form-group" style={{ marginBottom: '14px' }}>
+              <div className="form-group" style={{ marginBottom: '12px' }}>
                 <label>Nome Completo *</label>
                 <input
                   type="text"
-                  placeholder="Ex: Ana Clara Souza"
+                  placeholder="Seu nome"
                   value={nome}
                   onChange={(e) => setNome(e.target.value)}
                   required
                 />
               </div>
 
-              <div className="form-group" style={{ marginBottom: '14px' }}>
-                <label>CPF (Opcional)</label>
+              <div className="form-group" style={{ marginBottom: '12px' }}>
+                <label>CPF</label>
                 <input
                   type="text"
                   placeholder="000.000.000-00"
@@ -121,8 +117,8 @@ export default function Login() {
                 />
               </div>
 
-              <div className="form-group" style={{ marginBottom: '14px' }}>
-                <label>Telefone / WhatsApp</label>
+              <div className="form-group" style={{ marginBottom: '12px' }}>
+                <label>Telefone</label>
                 <input
                   type="text"
                   placeholder="(11) 98765-4321"
@@ -133,7 +129,7 @@ export default function Login() {
             </>
           )}
 
-          <div className="form-group" style={{ marginBottom: '14px' }}>
+          <div className="form-group" style={{ marginBottom: '12px' }}>
             <label>E-mail *</label>
             <input
               type="email"
@@ -144,11 +140,11 @@ export default function Login() {
             />
           </div>
 
-          <div className="form-group" style={{ marginBottom: '20px' }}>
+          <div className="form-group" style={{ marginBottom: '18px' }}>
             <label>Senha *</label>
             <input
               type="password"
-              placeholder="Digite sua senha"
+              placeholder="Sua senha"
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
               required
@@ -159,13 +155,9 @@ export default function Login() {
             type="submit"
             className="btn btn-primary"
             disabled={carregando}
-            style={{ width: '100%', padding: '12px', fontSize: '15px' }}
+            style={{ width: '100%', padding: '10px', fontSize: '14px' }}
           >
-            {carregando
-              ? 'Processando...'
-              : modoCadastro
-              ? 'Concluir Cadastro e Entrar'
-              : 'Entrar no Sistema'}
+            {carregando ? 'Entrando...' : modoCadastro ? 'Cadastrar' : 'Entrar'}
           </button>
         </form>
 
@@ -181,50 +173,38 @@ export default function Login() {
               border: 'none',
               color: 'var(--primary)',
               cursor: 'pointer',
-              fontSize: '13.5px',
-              textDecoration: 'underline'
+              fontSize: '13px'
             }}
           >
-            {modoCadastro
-              ? 'Já tem uma conta? Fazer login'
-              : 'Novo cliente? Cadastre-se aqui'}
+            {modoCadastro ? 'Já tem conta? Entrar' : 'Cadastre-se'}
           </button>
         </div>
 
-        {/* BOTÕES DE ACESSO RÁPIDO PARA DEMONSTRAÇÃO / AVALIAÇÃO ACADÊMICA */}
-        <div style={{ marginTop: '28px', paddingTop: '20px', borderTop: '1px solid var(--border)' }}>
-          <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '10px', textTransform: 'uppercase', textAlign: 'center' }}>
-            Acesso Rápido para Avaliação (Demo):
+        <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
+          <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px', textAlign: 'center' }}>
+            Acesso Rápido:
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '6px' }}>
             <button
               type="button"
               className="btn btn-secondary btn-sm"
               onClick={() => preencherRapido('admin@renatafaveri.com', 'admin123')}
-              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
             >
-              <span>👑 <strong>Proprietário</strong> (Renata Faveri)</span>
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>admin123</span>
+              Proprietário (Renata Faveri)
             </button>
-
             <button
               type="button"
               className="btn btn-secondary btn-sm"
               onClick={() => preencherRapido('colaborador@renatafaveri.com', 'colab123')}
-              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
             >
-              <span>💼 <strong>Colaborador</strong> (Amanda Souza)</span>
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>colab123</span>
+              Colaborador (Amanda Souza)
             </button>
-
             <button
               type="button"
               className="btn btn-secondary btn-sm"
               onClick={() => preencherRapido('cliente@gmail.com', 'cliente123')}
-              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
             >
-              <span>💆‍♀️ <strong>Cliente</strong> (Carla Oliveira)</span>
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>cliente123</span>
+              Cliente (Carla Oliveira)
             </button>
           </div>
         </div>

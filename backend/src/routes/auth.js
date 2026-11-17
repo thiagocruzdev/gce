@@ -4,10 +4,6 @@ const { hashPassword, verifyPassword, generateToken, authMiddleware } = require(
 
 const router = express.Router();
 
-/**
- * POST /api/auth/login
- * Autentica o usuário e retorna o token JWT
- */
 router.post('/login', async (req, res) => {
   try {
     const { email, senha } = req.body;
@@ -39,15 +35,13 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'E-mail ou senha incorretos' });
     }
 
-    const payload = {
+    const token = generateToken({
       id: usuario.id,
       email: usuario.email,
       nome: usuario.nome,
       role: usuario.role,
       id_pessoa: usuario.id_pessoa
-    };
-
-    const token = generateToken(payload);
+    });
 
     res.json({
       token,
@@ -61,14 +55,10 @@ router.post('/login', async (req, res) => {
       }
     });
   } catch (error) {
-    res.status(500).json({ error: 'Erro ao processar login: ' + error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
-/**
- * POST /api/auth/register
- * Cadastro de novo usuário (especialmente clientes)
- */
 router.post('/register', async (req, res) => {
   try {
     const { nome, email, senha, role, cpf, telefone } = req.body;
@@ -84,19 +74,20 @@ router.post('/register', async (req, res) => {
     });
 
     if (usuarioExistente) {
-      return res.status(400).json({ error: 'Já existe um usuário cadastrado com este e-mail' });
+      return res.status(400).json({ error: 'Já existe um usuário com este e-mail' });
     }
 
     const roleFinal = role ? String(role).toUpperCase() : 'CLIENTE';
 
     let idPessoa = null;
 
-    // Se fornecido CPF, vincula ou cria registro de Pessoa/Cliente
     if (cpf) {
-      const cpfLimpo = String(cpf).replace(/\D/g, '');
+      const cpfOriginal = String(cpf).trim();
+      const cpfLimpo = cpfOriginal.replace(/\D/g, '');
+
       let pessoa = await prisma.pessoa.findFirst({
         where: {
-          OR: [{ cpf: String(cpf).trim() }, ...(cpfLimpo ? [{ cpf: cpfLimpo }] : [])]
+          OR: [{ cpf: cpfOriginal }, ...(cpfLimpo ? [{ cpf: cpfLimpo }] : [])]
         }
       });
 
@@ -104,7 +95,7 @@ router.post('/register', async (req, res) => {
         pessoa = await prisma.pessoa.create({
           data: {
             nome: nome.trim(),
-            cpf: cpfLimpo || String(cpf).trim(),
+            cpf: cpfLimpo || cpfOriginal,
             email: emailLimpo,
             telefone: telefone ? String(telefone).trim() : null
           }
@@ -125,13 +116,11 @@ router.post('/register', async (req, res) => {
       }
     }
 
-    const senhaHash = hashPassword(senha);
-
     const novoUsuario = await prisma.usuario.create({
       data: {
         nome: nome.trim(),
         email: emailLimpo,
-        senha: senhaHash,
+        senha: hashPassword(senha),
         role: roleFinal,
         id_pessoa: idPessoa
       }
@@ -160,10 +149,6 @@ router.post('/register', async (req, res) => {
   }
 });
 
-/**
- * GET /api/auth/me
- * Retorna os dados do usuário autenticado a partir do token
- */
 router.get('/me', authMiddleware, async (req, res) => {
   try {
     const usuario = await prisma.usuario.findUnique({

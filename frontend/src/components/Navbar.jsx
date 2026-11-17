@@ -6,9 +6,8 @@ import iconeImg from '../images/icone.jpeg';
 export default function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { usuario, fazerLogout, ehProprietario, ehColaborador, ehCliente } = useAuth();
+  const { usuario, fazerLogout, ehColaborador, ehCliente } = useAuth();
 
-  // Definição dos menus com base no perfil de acesso
   let menus = [];
 
   if (!usuario) {
@@ -16,14 +15,12 @@ export default function Navbar() {
       { path: '/login', label: 'Entrar', match: (p) => p === '/login' }
     ];
   } else if (ehCliente) {
-    // Cliente: consulta e realiza os próprios agendamentos + consulta catálogo de serviços
     menus = [
       { path: '/agendamentos', label: 'Meus Agendamentos', match: (p) => p.startsWith('/agendamentos') },
       { path: '/agendamentos/novo', label: '+ Novo Agendamento', match: (p) => p === '/agendamentos/novo' },
       { path: '/servicos', label: 'Catálogo de Serviços', match: (p) => p.startsWith('/servicos') }
     ];
   } else if (ehColaborador) {
-    // Colaborador: consulta agendamentos feitos e a fazer + clientes + procedimentos
     menus = [
       { path: '/', label: 'Início', match: (p) => p === '/' },
       { path: '/agendamentos', label: 'Minha Agenda', match: (p) => p.startsWith('/agendamentos') },
@@ -32,7 +29,6 @@ export default function Navbar() {
       { path: '/produtos', label: 'Produtos', match: (p) => p.startsWith('/produtos') }
     ];
   } else {
-    // Proprietário: administra tudo + relatórios
     menus = [
       { path: '/', label: 'Início', match: (p) => p === '/' },
       { path: '/agendamentos', label: 'Agendamentos', match: (p) => p.startsWith('/agendamentos') },
@@ -42,7 +38,7 @@ export default function Navbar() {
       { path: '/produtos', label: 'Produtos', match: (p) => p.startsWith('/produtos') },
       { path: '/vendas', label: 'Vendas', match: (p) => p.startsWith('/vendas') },
       { path: '/posvenda', label: 'Pós-Venda', match: (p) => p.startsWith('/posvenda') },
-      { path: '/relatorios', label: '📊 Relatórios', match: (p) => p.startsWith('/relatorios') }
+      { path: '/relatorios', label: 'Relatórios', match: (p) => p.startsWith('/relatorios') }
     ];
   }
 
@@ -50,12 +46,12 @@ export default function Navbar() {
     if (!usuario) return null;
     const r = (usuario.role || '').toUpperCase();
     if (r === 'PROPRIETARIO') {
-      return <span className="badge badge-confirmado" style={{ fontSize: '11px' }}>👑 Proprietário</span>;
+      return <span className="badge badge-confirmado" style={{ fontSize: '11px' }}>Proprietário</span>;
     }
     if (r === 'COLABORADOR') {
-      return <span className="badge badge-pendente" style={{ fontSize: '11px' }}>💼 Colaborador</span>;
+      return <span className="badge badge-pendente" style={{ fontSize: '11px' }}>Colaborador</span>;
     }
-    return <span className="badge badge-pago" style={{ fontSize: '11px' }}>💆‍♀️ Cliente</span>;
+    return <span className="badge badge-pago" style={{ fontSize: '11px' }}>Cliente</span>;
   }
 
   return (
@@ -88,12 +84,11 @@ export default function Navbar() {
           })}
         </nav>
 
-        {/* ÁREA DO USUÁRIO LOGADO / SAIR */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {usuario ? (
             <>
               <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-main)' }}>
+                <span style={{ fontSize: '13px', fontWeight: '600' }}>
                   {usuario.nome}
                 </span>
                 {getBadgePerfil()}

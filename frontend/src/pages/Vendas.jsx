@@ -35,7 +35,6 @@ export default function Vendas({ mode = 'list', setMensagem }) {
   const [valorCustomizado, setValorCustomizado] = useState('');
   const [statusVenda, setStatusVenda] = useState('Pago');
 
-  // Estados dos filtros da listagem
   const [busca, setBusca] = useState('');
   const [filtroStatus, setFiltroStatus] = useState('');
   const [filtroDataInicio, setFiltroDataInicio] = useState('');
@@ -65,7 +64,7 @@ export default function Vendas({ mode = 'list', setMensagem }) {
       setServicos(s || []);
       setProdutos(p || []);
     } catch (e) {
-      console.log('Erro ao carregar opções:', e);
+      console.log(e);
     }
   }
 
@@ -75,7 +74,7 @@ export default function Vendas({ mode = 'list', setMensagem }) {
       const dados = await getVendas();
       setVendas(dados || []);
     } catch (erro) {
-      console.log('Erro ao carregar vendas:', erro);
+      console.log(erro);
     } finally {
       setCarregando(false);
     }
@@ -112,7 +111,7 @@ export default function Vendas({ mode = 'list', setMensagem }) {
     e.preventDefault();
 
     if (!idCliente || !idColaborador) {
-      alert('Selecione cliente e profissional!');
+      alert('Cliente e colaborador são obrigatórios');
       return;
     }
 
@@ -127,46 +126,44 @@ export default function Vendas({ mode = 'list', setMensagem }) {
         if (setMensagem) setMensagem('Venda atualizada com sucesso!');
         navigate(`/vendas/${id}`);
       } else {
-        if (!itemId) {
-          alert('Selecione o item vendido!');
-          return;
-        }
-
-        let valorUnitario = 0;
-        if (tipoItem === 'SERVICO') {
-          const s = servicos.find(item => String(item.id) === String(itemId));
-          if (s) valorUnitario = s.valor;
-        } else {
-          const p = produtos.find(item => String(item.id) === String(itemId));
-          if (p) valorUnitario = p.valor_venda;
+        let valorItem = 0;
+        if (tipoItem === 'SERVICO' && itemId) {
+          const s = servicos.find((srv) => srv.id === parseInt(itemId));
+          if (s) valorItem = s.valor;
+        } else if (tipoItem === 'PRODUTO' && itemId) {
+          const p = produtos.find((prd) => prd.id === parseInt(itemId));
+          if (p) valorItem = p.valor_venda;
         }
 
         const qtd = parseFloat(quantidade) || 1;
-        const total = valorCustomizado ? parseFloat(valorCustomizado) : (qtd * valorUnitario);
+        const totalCalculado = valorCustomizado ? parseFloat(valorCustomizado) : valorItem * qtd;
 
-        const novaVenda = await criarVenda({
+        const nova = await criarVenda({
           id_cliente: parseInt(idCliente),
           id_colaborador: parseInt(idColaborador),
-          valor_total: total,
-          valor_desconto: 0,
-          valor_final: total,
-          status: statusVenda || 'Pago'
+          valor_total: totalCalculado,
+          valor_final: totalCalculado,
+          status: statusVenda
         });
 
-        await adicionarItemVenda(novaVenda.id, {
-          tipo: tipoItem,
-          id_servico: tipoItem === 'SERVICO' ? parseInt(itemId) : null,
-          id_produto: tipoItem === 'PRODUTO' ? parseInt(itemId) : null,
-          id_colaborador: parseInt(idColaborador),
-          quantidade: qtd,
-          valor_unitario: valorUnitario
-        });
+        if (itemId) {
+          await adicionarItemVenda(nova.id, {
+            tipo: tipoItem,
+            id_produto: tipoItem === 'PRODUTO' ? parseInt(itemId) : null,
+            id_servico: tipoItem === 'SERVICO' ? parseInt(itemId) : null,
+            quantidade: qtd,
+            valor_unitario: valorItem,
+            valor_desconto: 0
+          });
+        }
 
-        await adicionarPagamentoVenda(novaVenda.id, {
-          forma_pagamento: formaPagamento,
-          valor: total,
-          status: 'Pago'
-        });
+        if (totalCalculado > 0) {
+          await adicionarPagamentoVenda(nova.id, {
+            forma_pagamento: formaPagamento,
+            valor: totalCalculado,
+            status: statusVenda === 'Pago' ? 'Pago' : 'Pendente'
+          });
+        }
 
         if (setMensagem) setMensagem('Venda registrada com sucesso!');
         navigate('/vendas');
@@ -191,28 +188,45 @@ export default function Vendas({ mode = 'list', setMensagem }) {
     }
   }
 
-  if (mode === 'view') {
-    if (carregando && !vendaAtual) {
-      return <div className="table-empty">Carregando detalhes da venda...</div>;
+  const vendasFiltradas = vendas.filter((v) => {
+    const termo = busca.toLowerCase();
+    const nomeCliente = v.cliente?.pessoa?.nome?.toLowerCase() || '';
+    const nomeColab = v.colaborador?.pessoa?.nome?.toLowerCase() || '';
+    const combinaBusca = nomeCliente.includes(termo) || nomeColab.includes(termo) || String(v.id).includes(termo);
+
+    let combinaStatus = true;
+    if (filtroStatus) {
+      combinaStatus = v.status === filtroStatus;
     }
 
-    const dataFormatada = vendaAtual?.data
-      ? new Date(vendaAtual.data).toLocaleDateString('pt-BR')
-      : '-';
+    let combinaData = true;
+    if (v.data) {
+      const dataVendaStr = new Date(v.data).toISOString().split('T')[0];
+      if (filtroDataInicio && dataVendaStr < filtroDataInicio) combinaData = false;
+      if (filtroDataFim && dataVendaStr > filtroDataFim) combinaData = false;
+    }
+
+    return combinaBusca && combinaStatus && combinaData;
+  });
+
+  if (mode === 'view') {
+    if (carregando && !vendaAtual) {
+      return <div className="table-empty">Carregando...</div>;
+    }
 
     return (
       <div>
         <div className="page-header">
           <div className="page-header-text">
-            <h2>Detalhes da Venda</h2>
-            <p>Registro fiscal e faturamento de procedimentos e cosméticos</p>
+            <h2>Detalhes da Venda #{vendaAtual?.id}</h2>
+            <p>Data: {vendaAtual?.data ? new Date(vendaAtual.data).toLocaleDateString('pt-BR') : '-'}</p>
           </div>
           <div className="page-header-actions">
             <button className="btn btn-secondary" onClick={() => navigate('/vendas')}>
-              &larr; Voltar para Lista
+              &larr; Voltar
             </button>
             <button className="btn btn-primary" onClick={() => navigate(`/vendas/${id}/editar`)}>
-              Editar Venda
+              Editar
             </button>
           </div>
         </div>
@@ -220,88 +234,48 @@ export default function Vendas({ mode = 'list', setMensagem }) {
         <div className="view-card">
           <div className="view-header">
             <div>
-              <div className="view-title">
-                Venda #{vendaAtual?.id} &bull; {vendaAtual?.cliente?.pessoa?.nome || 'Cliente'}
+              <div className="view-title">Venda #{vendaAtual?.id}</div>
+              <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
+                Status: {vendaAtual?.status}
               </div>
-              <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Realizada em {dataFormatada}</div>
             </div>
             <button className="btn btn-danger" onClick={() => remover(id)}>
-              Excluir Venda
+              Excluir
             </button>
           </div>
 
           <div className="view-grid">
             <div className="view-field">
-              <span className="view-label">Valor Final / Total</span>
-              <span className="view-value" style={{ color: 'var(--primary)', fontSize: '20px' }}>
-                R$ {Number(vendaAtual?.valor_final || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-              </span>
-            </div>
-
-            <div className="view-field">
-              <span className="view-label">Status da Transação</span>
-              <span className="view-value">
-                <span className="badge badge-pago">{vendaAtual?.status || 'Pago'}</span>
-              </span>
-            </div>
-
-            <div className="view-field">
-              <span className="view-label">Cliente Atendido</span>
+              <span className="view-label">Cliente</span>
               <span className="view-value">{vendaAtual?.cliente?.pessoa?.nome || '-'}</span>
             </div>
 
             <div className="view-field">
-              <span className="view-label">Profissional Responsável</span>
+              <span className="view-label">Colaborador</span>
               <span className="view-value">{vendaAtual?.colaborador?.pessoa?.nome || '-'}</span>
             </div>
 
             <div className="view-field">
-              <span className="view-label">Desconto Concedido</span>
+              <span className="view-label">Valor Final</span>
               <span className="view-value">
-                {vendaAtual?.valor_desconto ? `R$ ${Number(vendaAtual.valor_desconto).toFixed(2)}` : 'R$ 0,00'}
+                R$ {Number(vendaAtual?.valor_final || 0).toFixed(2)}
               </span>
             </div>
 
             <div className="view-field">
-              <span className="view-label">Data da Operação</span>
-              <span className="view-value">{dataFormatada}</span>
+              <span className="view-label">Status</span>
+              <span className="view-value">
+                <span className="badge badge-pago">{vendaAtual?.status || 'Pago'}</span>
+              </span>
             </div>
           </div>
-
-          {vendaAtual?.itens && vendaAtual.itens.length > 0 && (
-            <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
-              <h4 style={{ marginBottom: '12px', fontSize: '14px' }}>Itens Inclusos nesta Venda</h4>
-              <table style={{ width: '100%', marginBottom: '16px' }}>
-                <thead>
-                  <tr>
-                    <th>Item</th>
-                    <th>Tipo</th>
-                    <th>Qtd</th>
-                    <th>Unitário</th>
-                    <th>Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {vendaAtual.itens.map((it) => (
-                    <tr key={it.id}>
-                      <td><strong>{it.servico?.nome || it.produto?.nome || 'Item'}</strong></td>
-                      <td>{it.tipo}</td>
-                      <td>{it.quantidade}</td>
-                      <td>R$ {Number(it.valor_unitario || 0).toFixed(2)}</td>
-                      <td><strong>R$ {Number((it.quantidade || 1) * (it.valor_unitario || 0)).toFixed(2)}</strong></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
 
           <div className="view-footer">
             <button className="btn btn-secondary" onClick={() => navigate('/vendas')}>
               Voltar
             </button>
             <button className="btn btn-primary" onClick={() => navigate(`/vendas/${id}/editar`)}>
-              Editar Dados
+              Editar
             </button>
           </div>
         </div>
@@ -314,16 +288,16 @@ export default function Vendas({ mode = 'list', setMensagem }) {
       <div>
         <div className="page-header">
           <div className="page-header-text">
-            <h2>{id ? `Editar Venda #${id}` : 'Registrar Venda'}</h2>
-            <p>{id ? 'Altere as informações da venda' : 'Registre o pagamento e itens do atendimento'}</p>
+            <h2>{id ? `Editar Venda #${id}` : 'Nova Venda'}</h2>
+            <p>{id ? 'Alterar dados' : 'Registrar venda'}</p>
           </div>
           <button className="btn btn-secondary" onClick={() => navigate('/vendas')}>
-            &larr; Voltar para Lista
+            &larr; Voltar
           </button>
         </div>
 
         <div className="form-card">
-          <h3 className="form-title">{id ? 'Editar Dados da Venda' : 'Registrar Nova Venda'}</h3>
+          <h3 className="form-title">{id ? 'Editar Venda' : 'Registrar Venda'}</h3>
           <form onSubmit={salvarVenda}>
             <div className="form-grid-2">
               <div className="form-group">
@@ -333,7 +307,7 @@ export default function Vendas({ mode = 'list', setMensagem }) {
                   onChange={(e) => setIdCliente(e.target.value)}
                   required
                 >
-                  <option value="">Selecione o cliente...</option>
+                  <option value="">Selecione...</option>
                   {clientes.map((c) => (
                     <option key={c.id_pessoa} value={c.id_pessoa}>
                       {c.pessoa?.nome}
@@ -343,7 +317,7 @@ export default function Vendas({ mode = 'list', setMensagem }) {
               </div>
 
               <div className="form-group">
-                <label>Profissional Responsável *</label>
+                <label>Colaborador *</label>
                 <select
                   value={idColaborador}
                   onChange={(e) => setIdColaborador(e.target.value)}
@@ -352,7 +326,7 @@ export default function Vendas({ mode = 'list', setMensagem }) {
                   <option value="">Selecione...</option>
                   {colaboradores.map((colab) => (
                     <option key={colab.id_pessoa} value={colab.id_pessoa}>
-                      {colab.pessoa?.nome} ({colab.especializacao || 'Profissional'})
+                      {colab.pessoa?.nome}
                     </option>
                   ))}
                 </select>
@@ -363,7 +337,7 @@ export default function Vendas({ mode = 'list', setMensagem }) {
               <>
                 <div className="form-grid-2">
                   <div className="form-group">
-                    <label>Tipo de Item</label>
+                    <label>Tipo</label>
                     <select
                       value={tipoItem}
                       onChange={(e) => {
@@ -371,13 +345,13 @@ export default function Vendas({ mode = 'list', setMensagem }) {
                         setItemId('');
                       }}
                     >
-                      <option value="SERVICO">Serviço / Procedimento</option>
-                      <option value="PRODUTO">Produto / Cosmético</option>
+                      <option value="SERVICO">Serviço</option>
+                      <option value="PRODUTO">Produto</option>
                     </select>
                   </div>
 
                   <div className="form-group">
-                    <label>Selecione o {tipoItem === 'SERVICO' ? 'Serviço' : 'Produto'} *</label>
+                    <label>{tipoItem === 'SERVICO' ? 'Serviço' : 'Produto'} *</label>
                     <select
                       value={itemId}
                       onChange={(e) => setItemId(e.target.value)}
@@ -392,7 +366,7 @@ export default function Vendas({ mode = 'list', setMensagem }) {
                           ))
                         : produtos.map((p) => (
                             <option key={p.id} value={p.id}>
-                              {p.nome} — R$ {Number(p.valor_venda || 0).toFixed(2)} (disp: {p.qntd})
+                              {p.nome} — R$ {Number(p.valor_venda || 0).toFixed(2)}
                             </option>
                           ))}
                     </select>
@@ -419,7 +393,7 @@ export default function Vendas({ mode = 'list', setMensagem }) {
                       <option value="PIX">PIX</option>
                       <option value="CARTAO_CREDITO">Cartão de Crédito</option>
                       <option value="CARTAO_DEBITO">Cartão de Débito</option>
-                      <option value="DINHEIRO">Dinheiro em Espécie</option>
+                      <option value="DINHEIRO">Dinheiro</option>
                     </select>
                   </div>
                 </div>
@@ -428,19 +402,18 @@ export default function Vendas({ mode = 'list', setMensagem }) {
 
             <div className="form-grid-2">
               <div className="form-group">
-                <label>Valor Total (R$) {id ? '*' : '(Opcional se selecionado item)'}</label>
+                <label>Valor Total (R$)</label>
                 <input
                   type="number"
                   step="0.01"
                   value={valorCustomizado}
                   onChange={(e) => setValorCustomizado(e.target.value)}
                   placeholder="Ex: 150.00"
-                  required={!!id}
                 />
               </div>
 
               <div className="form-group">
-                <label>Status da Venda</label>
+                <label>Status</label>
                 <select
                   value={statusVenda}
                   onChange={(e) => setStatusVenda(e.target.value)}
@@ -461,7 +434,7 @@ export default function Vendas({ mode = 'list', setMensagem }) {
                 Cancelar
               </button>
               <button type="submit" className="btn btn-primary">
-                {id ? 'Salvar Alterações' : 'Salvar Venda'}
+                Salvar
               </button>
             </div>
           </form>
@@ -470,34 +443,12 @@ export default function Vendas({ mode = 'list', setMensagem }) {
     );
   }
 
-  // Filtragem dos dados de vendas
-  const vendasFiltradas = vendas.filter((v) => {
-    const termo = busca.toLowerCase();
-    const nomeCliente = v.cliente?.pessoa?.nome?.toLowerCase() || '';
-    const nomeColab = v.colaborador?.pessoa?.nome?.toLowerCase() || '';
-    const combinaBusca = nomeCliente.includes(termo) || nomeColab.includes(termo) || String(v.id).includes(termo);
-
-    let combinaStatus = true;
-    if (filtroStatus) {
-      combinaStatus = v.status === filtroStatus;
-    }
-
-    let combinaData = true;
-    if (v.data) {
-      const dataVendaStr = new Date(v.data).toISOString().split('T')[0];
-      if (filtroDataInicio && dataVendaStr < filtroDataInicio) combinaData = false;
-      if (filtroDataFim && dataVendaStr > filtroDataFim) combinaData = false;
-    }
-
-    return combinaBusca && combinaStatus && combinaData;
-  });
-
   return (
     <div>
       <div className="page-header">
         <div className="page-header-text">
-          <h2>Faturamento &amp; Vendas</h2>
-          <p>Registro de atendimentos prestados e venda de cosméticos</p>
+          <h2>Vendas</h2>
+          <p>Registro de vendas e faturamento</p>
         </div>
 
         <button
@@ -508,24 +459,23 @@ export default function Vendas({ mode = 'list', setMensagem }) {
         </button>
       </div>
 
-      {/* FORMULÁRIO DE FILTRO DE VENDAS */}
       <div className="view-card" style={{ marginBottom: '20px', padding: '16px 20px' }}>
         <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <div className="form-group" style={{ flex: '1', minWidth: '200px' }}>
-            <label style={{ fontSize: '12px' }}>Buscar por Cliente ou Profissional</label>
+            <label style={{ fontSize: '12px' }}>Buscar</label>
             <input
               type="text"
               className="search-input"
-              placeholder="Digite o nome ou ID da venda..."
+              placeholder="Buscar por cliente ou colaborador..."
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
             />
           </div>
 
           <div className="form-group" style={{ minWidth: '150px' }}>
-            <label style={{ fontSize: '12px' }}>Status da Venda</label>
+            <label style={{ fontSize: '12px' }}>Status</label>
             <select value={filtroStatus} onChange={(e) => setFiltroStatus(e.target.value)}>
-              <option value="">Todos os status</option>
+              <option value="">Todos</option>
               <option value="Pago">Pago</option>
               <option value="Pendente">Pendente</option>
               <option value="Cancelado">Cancelado</option>
@@ -533,7 +483,7 @@ export default function Vendas({ mode = 'list', setMensagem }) {
           </div>
 
           <div className="form-group" style={{ minWidth: '150px' }}>
-            <label style={{ fontSize: '12px' }}>De (Data Início)</label>
+            <label style={{ fontSize: '12px' }}>Data Inicial</label>
             <input
               type="date"
               value={filtroDataInicio}
@@ -542,7 +492,7 @@ export default function Vendas({ mode = 'list', setMensagem }) {
           </div>
 
           <div className="form-group" style={{ minWidth: '150px' }}>
-            <label style={{ fontSize: '12px' }}>Até (Data Fim)</label>
+            <label style={{ fontSize: '12px' }}>Data Final</label>
             <input
               type="date"
               value={filtroDataFim}
@@ -561,7 +511,7 @@ export default function Vendas({ mode = 'list', setMensagem }) {
                 setFiltroDataFim('');
               }}
             >
-              Limpar Filtros
+              Limpar
             </button>
           )}
         </div>
@@ -595,7 +545,7 @@ export default function Vendas({ mode = 'list', setMensagem }) {
               {vendasFiltradas.length === 0 ? (
                 <tr>
                   <td colSpan="7" className="table-empty">
-                    {carregando ? 'Carregando vendas...' : 'Nenhuma venda encontrada para os filtros aplicados.'}
+                    {carregando ? 'Carregando...' : 'Nenhuma venda encontrada.'}
                   </td>
                 </tr>
               ) : (

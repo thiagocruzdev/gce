@@ -24,13 +24,11 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
   const [carregando, setCarregando] = useState(false);
   const [agendamentoAtual, setAgendamentoAtual] = useState(null);
 
-  // Estados dos filtros
   const [busca, setBusca] = useState('');
   const [filtroStatus, setFiltroStatus] = useState('');
   const [filtroData, setFiltroData] = useState('');
-  const [filtroTipo, setFiltroTipo] = useState('todos'); // 'todos' | 'feitos' | 'falta_fazer'
+  const [filtroTipo, setFiltroTipo] = useState('todos');
 
-  // Estados do formulário
   const [idCliente, setIdCliente] = useState('');
   const [idColaborador, setIdColaborador] = useState('');
   const [idServico, setIdServico] = useState('');
@@ -48,7 +46,6 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
       carregarDetalhe(id);
     } else if (mode === 'edit' && !id) {
       limparCampos();
-      // Se for cliente logado, auto-seleciona ele mesmo
       if (ehCliente && usuario?.id_pessoa) {
         setIdCliente(String(usuario.id_pessoa));
       }
@@ -66,7 +63,7 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
       setColaboradores(colab || []);
       setServicos(s || []);
     } catch (e) {
-      console.log('Erro ao carregar opções:', e);
+      console.log(e);
     }
   }
 
@@ -82,7 +79,7 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
       const dados = await getAgendamentos(filtros);
       setAgendamentos(dados || []);
     } catch (erro) {
-      console.log('Erro ao carregar agendamentos:', erro);
+      console.log(erro);
     } finally {
       setCarregando(false);
     }
@@ -122,11 +119,11 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
 
   function validarFormulario() {
     const novosErros = {};
-    if (!idCliente) novosErros.idCliente = 'Selecione a cliente para o agendamento';
-    if (!idColaborador) novosErros.idColaborador = 'Selecione o profissional responsável';
-    if (!idServico) novosErros.idServico = 'Selecione o serviço / procedimento';
-    if (!dataMarcada) novosErros.dataMarcada = 'A data do agendamento é obrigatória';
-    if (!horaInicio) novosErros.horaInicio = 'O horário é obrigatório';
+    if (!idCliente) novosErros.idCliente = 'Selecione o cliente';
+    if (!idColaborador) novosErros.idColaborador = 'Selecione o colaborador';
+    if (!idServico) novosErros.idServico = 'Selecione o serviço';
+    if (!dataMarcada) novosErros.dataMarcada = 'Informe a data';
+    if (!horaInicio) novosErros.horaInicio = 'Informe o horário';
 
     setErrosForm(novosErros);
     return Object.keys(novosErros).length === 0;
@@ -164,7 +161,7 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
           observacao: observacao,
           status: status
         });
-        if (setMensagem) setMensagem('Agendamento realizado com sucesso!');
+        if (setMensagem) setMensagem('Agendamento cadastrado com sucesso!');
         navigate('/agendamentos');
       }
     } catch (erro) {
@@ -175,29 +172,28 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
   async function mudarStatus(idAgendamento, novoStatus) {
     try {
       await atualizarAgendamento(idAgendamento, { status: novoStatus });
-      if (setMensagem) setMensagem(`Status atualizado para "${novoStatus}"!`);
+      if (setMensagem) setMensagem('Status alterado!');
       carregarAgendamentos();
     } catch (erro) {
-      alert('Erro ao alterar status: ' + erro.message);
+      alert('Erro: ' + erro.message);
     }
   }
 
   async function remover(idAgendamento) {
-    if (!window.confirm('Deseja realmente cancelar e excluir este agendamento?')) return;
+    if (!window.confirm('Deseja excluir este agendamento?')) return;
     try {
       await excluirAgendamento(idAgendamento);
-      if (setMensagem) setMensagem('Agendamento cancelado com sucesso!');
+      if (setMensagem) setMensagem('Agendamento excluído com sucesso!');
       if (mode === 'list') {
         carregarAgendamentos();
       } else {
         navigate('/agendamentos');
       }
     } catch (erro) {
-      alert('Erro ao excluir agendamento: ' + erro.message);
+      alert('Erro ao excluir: ' + erro.message);
     }
   }
 
-  // Filtragem dos agendamentos
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
 
@@ -231,10 +227,9 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
     return combinaBusca && combinaStatus && combinaData && combinaTipo;
   });
 
-  // Visão Detalhes
   if (mode === 'view') {
     if (carregando && !agendamentoAtual) {
-      return <div className="table-empty">Carregando detalhes do agendamento...</div>;
+      return <div className="table-empty">Carregando...</div>;
     }
 
     return (
@@ -242,14 +237,14 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
         <div className="page-header">
           <div className="page-header-text">
             <h2>Detalhes do Agendamento</h2>
-            <p>Horário #{agendamentoAtual?.id} &bull; {agendamentoAtual?.servico?.nome || 'Procedimento'}</p>
+            <p>Horário #{agendamentoAtual?.id}</p>
           </div>
           <div className="page-header-actions">
             <button className="btn btn-secondary" onClick={() => navigate('/agendamentos')}>
-              &larr; Voltar para Agenda
+              &larr; Voltar
             </button>
             <button className="btn btn-primary" onClick={() => navigate(`/agendamentos/${id}/editar`)}>
-              Editar Agendamento
+              Editar
             </button>
           </div>
         </div>
@@ -259,28 +254,28 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
             <div>
               <div className="view-title">{agendamentoAtual?.servico?.nome}</div>
               <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
-                Data: {agendamentoAtual?.data_marcada ? new Date(agendamentoAtual.data_marcada).toLocaleDateString('pt-BR') : '-'} às {agendamentoAtual?.hora_inicio || '09:00'}
+                {agendamentoAtual?.data_marcada ? new Date(agendamentoAtual.data_marcada).toLocaleDateString('pt-BR') : '-'} às {agendamentoAtual?.hora_inicio || '09:00'}
               </div>
             </div>
             <button className="btn btn-danger" onClick={() => remover(id)}>
-              Cancelar Agendamento
+              Excluir
             </button>
           </div>
 
           <div className="view-grid">
             <div className="view-field">
               <span className="view-label">Cliente</span>
-              <span className="view-value">{agendamentoAtual?.cliente?.pessoa?.nome || 'Não identificado'}</span>
+              <span className="view-value">{agendamentoAtual?.cliente?.pessoa?.nome || '-'}</span>
             </div>
 
             <div className="view-field">
-              <span className="view-label">Telefone da Cliente</span>
-              <span className="view-value">{agendamentoAtual?.cliente?.pessoa?.telefone || 'Não informado'}</span>
+              <span className="view-label">Telefone</span>
+              <span className="view-value">{agendamentoAtual?.cliente?.pessoa?.telefone || '-'}</span>
             </div>
 
             <div className="view-field">
-              <span className="view-label">Profissional Responsável</span>
-              <span className="view-value">{agendamentoAtual?.colaborador?.pessoa?.nome || 'Profissional'}</span>
+              <span className="view-label">Profissional</span>
+              <span className="view-value">{agendamentoAtual?.colaborador?.pessoa?.nome || '-'}</span>
             </div>
 
             <div className="view-field">
@@ -289,14 +284,14 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
             </div>
 
             <div className="view-field">
-              <span className="view-label">Valor Estimado</span>
+              <span className="view-label">Valor Previsto</span>
               <span className="view-value">
                 R$ {Number(agendamentoAtual?.valor_previsto || agendamentoAtual?.servico?.valor || 0).toFixed(2)}
               </span>
             </div>
 
             <div className="view-field">
-              <span className="view-label">Situação</span>
+              <span className="view-label">Status</span>
               <span className="view-value">
                 <span className={`badge badge-${(agendamentoAtual?.status || '').toLowerCase()}`}>
                   {agendamentoAtual?.status || 'Confirmado'}
@@ -307,9 +302,9 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
 
           {agendamentoAtual?.observacao && (
             <div style={{ marginTop: '20px', padding: '14px', background: 'var(--bg-page)', borderRadius: 'var(--radius-md)' }}>
-              <strong style={{ fontSize: '13px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
-                Observações Clínicas:
-              </strong>
+              <span style={{ fontSize: '13px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                Observações:
+              </span>
               <p style={{ margin: 0, fontSize: '14px' }}>{agendamentoAtual.observacao}</p>
             </div>
           )}
@@ -319,7 +314,7 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
               Voltar
             </button>
             <button className="btn btn-primary" onClick={() => navigate(`/agendamentos/${id}/editar`)}>
-              Editar Agendamento
+              Editar
             </button>
           </div>
         </div>
@@ -327,22 +322,21 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
     );
   }
 
-  // Visão Cadastro / Edição
   if (mode === 'edit') {
     return (
       <div>
         <div className="page-header">
           <div className="page-header-text">
             <h2>{id ? `Editar Agendamento #${id}` : 'Novo Agendamento'}</h2>
-            <p>{id ? 'Altere as informações do horário marcado' : 'Preencha os dados do procedimento'}</p>
+            <p>{id ? 'Alterar dados' : 'Preencha o formulário'}</p>
           </div>
           <button className="btn btn-secondary" onClick={() => navigate('/agendamentos')}>
-            &larr; Voltar para Agenda
+            &larr; Voltar
           </button>
         </div>
 
         <div className="form-card">
-          <h3 className="form-title">{id ? 'Alterar Horário Marcado' : 'Agendar Novo Atendimento'}</h3>
+          <h3 className="form-title">{id ? 'Editar Agendamento' : 'Novo Agendamento'}</h3>
           <form onSubmit={salvar}>
             <div className="form-grid-2">
               <div className="form-group">
@@ -352,7 +346,6 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
                     type="text"
                     value={usuario?.nome || 'Você'}
                     disabled
-                    style={{ backgroundColor: '#f0f0f0' }}
                   />
                 ) : (
                   <select
@@ -360,10 +353,10 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
                     onChange={(e) => setIdCliente(e.target.value)}
                     style={{ borderColor: errosForm.idCliente ? 'var(--red-text)' : undefined }}
                   >
-                    <option value="">Selecione a cliente...</option>
+                    <option value="">Selecione...</option>
                     {clientes.map((c) => (
                       <option key={c.id_pessoa} value={c.id_pessoa}>
-                        {c.pessoa?.nome} ({c.pessoa?.cpf || 'Sem CPF'})
+                        {c.pessoa?.nome}
                       </option>
                     ))}
                   </select>
@@ -372,16 +365,16 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
               </div>
 
               <div className="form-group">
-                <label>Profissional Responsável *</label>
+                <label>Profissional *</label>
                 <select
                   value={idColaborador}
                   onChange={(e) => setIdColaborador(e.target.value)}
                   style={{ borderColor: errosForm.idColaborador ? 'var(--red-text)' : undefined }}
                 >
-                  <option value="">Selecione o profissional...</option>
+                  <option value="">Selecione...</option>
                   {colaboradores.map((colab) => (
                     <option key={colab.id_pessoa} value={colab.id_pessoa}>
-                      {colab.pessoa?.nome} — {colab.especializacao || 'Esteticista'}
+                      {colab.pessoa?.nome}
                     </option>
                   ))}
                 </select>
@@ -391,16 +384,16 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
 
             <div className="form-grid-2">
               <div className="form-group">
-                <label>Procedimento / Serviço *</label>
+                <label>Serviço *</label>
                 <select
                   value={idServico}
                   onChange={(e) => setIdServico(e.target.value)}
                   style={{ borderColor: errosForm.idServico ? 'var(--red-text)' : undefined }}
                 >
-                  <option value="">Selecione o procedimento...</option>
+                  <option value="">Selecione...</option>
                   {servicos.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.nome} — R$ {Number(s.valor || 0).toFixed(2)} ({s.duracao_minutos || 60} min)
+                      {s.nome} — R$ {Number(s.valor || 0).toFixed(2)}
                     </option>
                   ))}
                 </select>
@@ -408,7 +401,7 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
               </div>
 
               <div className="form-group">
-                <label>Data Marcada *</label>
+                <label>Data *</label>
                 <input
                   type="date"
                   value={dataMarcada}
@@ -421,7 +414,7 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
 
             <div className="form-grid-2">
               <div className="form-group">
-                <label>Horário de Início *</label>
+                <label>Horário *</label>
                 <input
                   type="time"
                   value={horaInicio}
@@ -432,7 +425,7 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
               </div>
 
               <div className="form-group">
-                <label>Status do Horário</label>
+                <label>Status</label>
                 <select value={status} onChange={(e) => setStatus(e.target.value)}>
                   <option value="Confirmado">Confirmado</option>
                   <option value="Pendente">Pendente</option>
@@ -443,12 +436,12 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
             </div>
 
             <div className="form-group">
-              <label>Observações Clínicas / Preferências</label>
+              <label>Observações</label>
               <textarea
                 rows="3"
                 value={observacao}
                 onChange={(e) => setObservacao(e.target.value)}
-                placeholder="Ex: pele sensível, recomendações pós-procedimento..."
+                placeholder="Observações do atendimento..."
               />
             </div>
 
@@ -461,7 +454,7 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
                 Cancelar
               </button>
               <button type="submit" className="btn btn-primary">
-                {id ? 'Salvar Alterações' : 'Confirmar Agendamento'}
+                Salvar
               </button>
             </div>
           </form>
@@ -470,18 +463,17 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
     );
   }
 
-  // Visão Listagem Principal
   return (
     <div>
       <div className="page-header">
         <div className="page-header-text">
-          <h2>{ehCliente ? 'Meus Agendamentos' : ehColaborador ? 'Minha Agenda de Atendimentos' : 'Agendamentos da Clínica'}</h2>
+          <h2>{ehCliente ? 'Meus Agendamentos' : ehColaborador ? 'Minha Agenda' : 'Agendamentos'}</h2>
           <p>
             {ehCliente
-              ? 'Consulte seus horários marcados ou agende novos procedimentos'
+              ? 'Consulte seus horários ou agende procedimentos'
               : ehColaborador
-              ? 'Consulte os agendamentos que você já fez e os que ainda falta fazer'
-              : 'Gerenciamento completo da agenda de atendimentos da clínica'}
+              ? 'Consulte os agendamentos feitos e que falta fazer'
+              : 'Gerenciamento da agenda da clínica'}
           </p>
         </div>
 
@@ -493,7 +485,6 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
         </button>
       </div>
 
-      {/* ABAS RÁPIDAS PARA O COLABORADOR / PROPRIETÁRIO: FEITOS vs FALTA FAZER */}
       {(ehColaborador || ehProprietario) && (
         <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
           <button
@@ -508,36 +499,35 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
             className={`btn btn-sm ${filtroTipo === 'falta_fazer' ? 'btn-primary' : 'btn-secondary'}`}
             onClick={() => setFiltroTipo('falta_fazer')}
           >
-            ⏳ Falta Fazer (Próximos)
+            Falta Fazer
           </button>
           <button
             type="button"
             className={`btn btn-sm ${filtroTipo === 'feitos' ? 'btn-primary' : 'btn-secondary'}`}
             onClick={() => setFiltroTipo('feitos')}
           >
-            ✅ Feitos (Concluídos / Histórico)
+            Feitos
           </button>
         </div>
       )}
 
-      {/* FORMULÁRIO DE FILTRO DE DADOS */}
       <div className="view-card" style={{ marginBottom: '20px', padding: '16px 20px' }}>
         <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <div className="form-group" style={{ flex: '1', minWidth: '200px' }}>
-            <label style={{ fontSize: '12px' }}>Buscar por Cliente, Serviço ou Profissional</label>
+            <label style={{ fontSize: '12px' }}>Buscar</label>
             <input
               type="text"
               className="search-input"
-              placeholder="Digite para filtrar..."
+              placeholder="Buscar por cliente, serviço ou profissional..."
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
             />
           </div>
 
           <div className="form-group" style={{ minWidth: '150px' }}>
-            <label style={{ fontSize: '12px' }}>Situação / Status</label>
+            <label style={{ fontSize: '12px' }}>Status</label>
             <select value={filtroStatus} onChange={(e) => setFiltroStatus(e.target.value)}>
-              <option value="">Todos os status</option>
+              <option value="">Todos</option>
               <option value="Confirmado">Confirmado</option>
               <option value="Pendente">Pendente</option>
               <option value="Concluído">Concluído</option>
@@ -546,7 +536,7 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
           </div>
 
           <div className="form-group" style={{ minWidth: '150px' }}>
-            <label style={{ fontSize: '12px' }}>Data Específica</label>
+            <label style={{ fontSize: '12px' }}>Data</label>
             <input
               type="date"
               value={filtroData}
@@ -565,13 +555,12 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
                 setFiltroTipo('todos');
               }}
             >
-              Limpar Filtros
+              Limpar
             </button>
           )}
         </div>
       </div>
 
-      {/* TABELA DE AGENDAMENTOS */}
       <div className="table-card">
         <div className="table-header-box">
           <h3>
@@ -593,9 +582,9 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
                 <th>Data</th>
                 <th>Horário</th>
                 <th>Cliente</th>
-                <th>Procedimento</th>
+                <th>Serviço</th>
                 <th>Profissional</th>
-                <th>Valor Est.</th>
+                <th>Valor</th>
                 <th>Status</th>
                 <th>Ações</th>
               </tr>
@@ -604,7 +593,7 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
               {agendamentosFiltrados.length === 0 ? (
                 <tr>
                   <td colSpan="8" className="table-empty">
-                    {carregando ? 'Carregando agenda...' : 'Nenhum agendamento encontrado para os filtros selecionados.'}
+                    {carregando ? 'Carregando...' : 'Nenhum agendamento encontrado.'}
                   </td>
                 </tr>
               ) : (
@@ -633,11 +622,7 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
                             borderRadius: '4px',
                             border: '1px solid var(--border)',
                             fontSize: '12px',
-                            fontWeight: '600',
-                            backgroundColor:
-                              a.status === 'Confirmado' || a.status === 'Concluído' ? '#e6f4ea' : '#fef3d6',
-                            color:
-                              a.status === 'Confirmado' || a.status === 'Concluído' ? '#1e7e34' : '#b27300'
+                            fontWeight: '600'
                           }}
                         >
                           <option value="Confirmado">Confirmado</option>
@@ -674,7 +659,7 @@ export default function Agendamentos({ mode = 'list', setMensagem }) {
                           className="btn btn-danger btn-sm"
                           onClick={() => remover(a.id)}
                         >
-                          Cancelar
+                          Excluir
                         </button>
                       </div>
                     </td>
