@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 
-const SECRET = process.env.JWT_SECRET || 'gce-secret-key-2026';
+const SECRET = process.env.JWT_SECRET;
 
 function hashPassword(password) {
   const salt = crypto.randomBytes(16).toString('hex');
